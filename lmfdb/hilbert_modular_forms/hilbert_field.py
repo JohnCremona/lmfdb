@@ -102,12 +102,33 @@ def conjideals(ideals, auts): #(label,g) -> label
 
 
 class HilbertNumberField(WebNumberField):
-    """
-    Subclass of WebNumberField which also facilitates extraction of
+    """Subclass of WebNumberField which also facilitates extraction of
     the number field data stored in the Hilbert Modular Forms
-    database.
+    database, or from a data file.  Also allows storing into the
+    database, so it can be used to read from a file and then store the
+    result.
     """
-    def __init__(self, label):
+    def __init__(self, label=None, filename=None):
+        r"""
+        If label is not None it initialises from the database.
+
+        Otherwise, if filename is not None, it reads from a data file
+        (in the format described in hmf_data_format.txt).
+
+        Otherwise, an error is raised.
+        """
+        if label:
+            self.init_from_label(label)
+        else:
+            if filename:
+                self.init_from_file(filename)
+            else:
+                raise ValueError("either label or fiilename must be specified to create a HilbertNumberField")
+
+
+    def init_from_label(self, label):
+        print("Creating HilbertNumberField from label %s" % label)
+        self.label = label
         self.Fdata = db_hmfnf().find_one({'label':label})
         self.ideals = self.Fdata['ideals']
         self.primes = self.Fdata['primes']
@@ -175,4 +196,137 @@ class HilbertNumberField(WebNumberField):
         #         return I['ideal']
         # return None
 
+    def init_from_file(self, filename):
+        print("Creating HilbertNumberField from file %s" % filename)
+        hmff = file(filename)
+        if not hmff:
+            raise ValueError("Could not open file %s" % filename)
+            return
+        for L in hmff.readlines():
+            if "NEWFORMS" in L:
+                # For the field we need read no further
+                break
 
+            if "COEFFS" in L and not "NumberField" in L:
+                coeffs = [int(c) for c in L[L.find("[")+1:L.find("]")].split(",")]
+            if "n := " in L:
+                deg = int(L[L.find("= ")+2:L.find(";")])
+
+            if "d := " in L:
+                disc = int(L[L.find("= ")+2:L.find(";")])
+                # By the time d is read, we know enough to look up the
+                # field in the fields database, using the signature
+                # and decriminant (encoded), together with the
+                # coefficient list (if there is more than one field
+                # with the same signature and discrimimant)
+                from lmfdb.number_fields.number_field import make_disc_key
+                dkey = make_disc_key(ZZ(disc))[1]
+                sig = "%s,%s" % (deg,0)
+                co = str(coeffs)[1:-1].replace(" ","")
+                print("Finding all fields with signature %s and disc_key %s ..." % (sig,dkey))
+                self.label = None
+                for f in fields.find({"disc_abs_key": dkey, "signature": sig}):
+                    if f['coeffs'] == co:
+                        self.label = f['label']
+                        break
+
+                if not self.label:
+                    raise ValueError("Unable to find a field with signature %s, disc key %s and coeffs [%s] in the fields database!" % (sig, dkey, co))
+
+                print("...found!")
+                # We almost have enough now to contruct the
+                # WebNumberField, but not quite: we need the
+                # generator's name which we will find in the list of
+                # primes.
+                self.var = "?"
+
+            if "PRIMES :=" in L:
+                # convert one string into a list of strings
+                L = L[L.find("[[")+1:L.find("]]")+1]
+                self.primes = L.replace(" ","").replace("],[","] , [").split(" , ")
+                #print("primes = %s" % self.primes)
+                if self.var == "?":
+                    self.var = findvar(self.primes)
+                    print("variable name is %s (from PRIMES)" % self.var)
+
+            if "LEVELS :=" in L:
+                # convert one string into a list of strings
+                L = L[L.find("[[")+1:L.find("]]")+1]
+                self.ideals = L.replace(" ","").replace("],[","] , [").split(" , ")
+                #print("ideals = %s" % self.ideals)
+                if self.var == "?":
+                    self.var = findvar(self.ideals)
+                    print("variable name is %s (from LEVELS list)" % self.var)
+
+        print("Initializing WebNumberField with label %s, name %s" % (self.label,self.var))
+        WebNumberField.__init__(self,self.label,gen_name=self.var)
+        self.ideal_dict = {}
+        self.label_dict = {}
+        for I in self.ideals_iter():
+            self.ideal_dict[I['label']]=I['ideal']
+            self.label_dict[I['ideal']]=I['label']
+
+    def store_in_db(self):
+        r""" Stores self in the database, using 'upsert' so there is no
+        duplication but data is updated as necessary.
+
+        An entry in the database has the following data fields:
+
+        'label' (unicode string): label
+        'degree' (int): degree
+        'discriminant' (int): discrimimant
+        'ideals' (list of unicode strings): integral ideals in order
+        'primes' (list of unicode strings): prime ideals in order
+        """
+        db_data = {"label": self.label,
+                   "degree": self.degree(),
+                   "discriminant": int(self.disc()),
+                   "ideals": self.ideals,
+                   "primes": self.primes}
+        db_hmfnf().update({'label': self.label}, {"$set": db_data}, upsert=True)
+
+    def check_with_db(self):
+        r""" Check that the data in self agrees with whatis in the database for
+        the same label.
+        """
+        db_data = db_hmfnf().find_one({'label':self.label})
+        if not db_data:
+            print("HMF fields database has no entry with label %s" % self.label)
+            return True
+
+        if db_data['degree'] != self.degree():
+            print("HMF field %s has degree %s but this has degree %s" % (self.label, db_data['degree'], self.degree()))
+            return False
+
+        if db_data['discriminant'] != self.disc():
+            print("HMF field %s has discriminant %s but this has discriminant %s" % (self.label, db_data['discriminant'], self.disc()))
+            return False
+
+        # primes and ideals : we do not just compare strings but
+        # actual ideals, also reporting on whether the numbers agree
+        # (but this will not result in a failure):
+
+        F = HilbertNumberField(self.label)
+        from itertools import izip
+        agree = True
+
+        npdiff = False
+        if len(db_data['primes']) != len(self.primes):
+            npdiff = True
+            print("HMF field %s has %s primes, but this has %s" % (self.label, len(db_data['primes']), len(self.primes)))
+        npbad = sum([P!=Q for P,Q in izip(F.primes_iter(),G.primes_iter())])
+        if npbad:
+            agree = False
+            print("HMF field %s: inconsistent list of primes (%s disagreements)", (self.label,npbad))
+        else:
+            if npdiff:
+                print(" HMF field %s: inconsistent list of primes (%s disagreements)", (self.label,npbad))
+
+        if len(db_data['ideals']) != len(self.ideals):
+            print("HMF field %s has %s ideals, but this has %s" % (self.label, len(db_data['ideals']), len(self.ideals)))
+        nibad = sum([P!=Q for P,Q in izip(F.ideals_iter(),G.ideals_iter())])
+        if nibad:
+            agree = False
+            print("HMF field %s: inconsistent list of primes (%s disagreements)", (self.label,nibad))
+
+        return agree
