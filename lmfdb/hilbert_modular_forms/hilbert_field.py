@@ -134,11 +134,20 @@ class HilbertNumberField(WebNumberField):
         self.primes = self.Fdata['primes']
         self.var = findvar(self.ideals)
         WebNumberField.__init__(self,label,gen_name=self.var)
+        print("Setting up look-up tables for primes, ideals and their labels")
+        self.prime_norms = [I['ideal'].norm() for I in self.primes_iter()]
+        self.ideal_norms = [I['ideal'].norm() for I in self.ideals_iter()]
         self.ideal_dict = {}
         self.label_dict = {}
-        for I in self.ideals_iter():
+        self.ideal_index_dict = {}
+        self.prime_index_dict = {}
+        for i, I in enumerate(self.ideals_iter()):
             self.ideal_dict[I['label']]=I['ideal']
             self.label_dict[I['ideal']]=I['label']
+            self.ideal_index_dict[I['ideal']]=i
+        self.prime_index_dict = {}
+        for i, I in enumerate(self.primes_iter()):
+            self.prime_index_dict[I['ideal']]=i
 
     def _iter_ideals(self, primes=False, number=None):
         """
@@ -184,10 +193,18 @@ class HilbertNumberField(WebNumberField):
 
     def prime_label(self, idl):
         return self.ideal_label(idl)
-        # for I in self.primes_iter():
-        #     if I['ideal']==idl:
-        #         return I['label']
-        # return None
+
+    def prime_index(self, idl):
+        try:
+            return self.prime_index_dict[idl]
+        except KeyError:
+            return None
+
+    def ideal_index(self, idl):
+        try:
+            return self.ideal_index_dict[idl]
+        except KeyError:
+            return None
 
     def prime(self, lab):
         return self.ideal(lab)
@@ -314,19 +331,26 @@ class HilbertNumberField(WebNumberField):
         if len(db_data['primes']) != len(self.primes):
             npdiff = True
             print("HMF field %s has %s primes, but this has %s" % (self.label, len(db_data['primes']), len(self.primes)))
+        else:
+            print("HMF field %s has %s primes, agreed" % (self.label, len(db_data['primes'])))
         npbad = sum([P!=Q for P,Q in izip(F.primes_iter(),G.primes_iter())])
         if npbad:
             agree = False
-            print("HMF field %s: inconsistent list of primes (%s disagreements)", (self.label,npbad))
+            print("HMF field %s: inconsistent list of primes (%s disagreements)"% (self.label,npbad))
         else:
             if npdiff:
-                print(" HMF field %s: inconsistent list of primes (%s disagreements)", (self.label,npbad))
+                print(" ...consistent lists of primes (the first %s agree)" % min(len(db_data['primes']),len(self.primes)))
 
+        nidiff = False
         if len(db_data['ideals']) != len(self.ideals):
+            nidiff = True
             print("HMF field %s has %s ideals, but this has %s" % (self.label, len(db_data['ideals']), len(self.ideals)))
         nibad = sum([P!=Q for P,Q in izip(F.ideals_iter(),G.ideals_iter())])
         if nibad:
             agree = False
-            print("HMF field %s: inconsistent list of primes (%s disagreements)", (self.label,nibad))
+            print("HMF field %s: inconsistent list of ideals (%s disagreements)"% (self.label,nibad))
+        else:
+            if nidiff:
+                print(" ...consistent lists of ideals (the first %s agree)" % min(len(db_data['ideals']),len(self.ideals)))
 
         return agree

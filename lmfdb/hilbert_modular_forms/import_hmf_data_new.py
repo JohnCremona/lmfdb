@@ -25,15 +25,8 @@ fields = C.numberfields.fields
 magma.eval('nice_idealstr := function(F : Bound := 10000); idealsstr := []; ideals := IdealsUpTo(Bound, F); for I in ideals do bl, g := IsPrincipal(I); if bl then s := Sprintf("[%o, %o, %o]", Norm(I), Minimum(I), F!g); else zs := Generators(I); z := zs[#zs]; m := Minimum(I); z := F![(Integers()!c) mod m : c in Eltseq(F!z)]; assert ideal<Integers(F) | [m, z]> eq I; s := Sprintf("[%o, %o, %o]", Norm(I), m, z); end if; Append(~idealsstr, s); end for; return idealsstr; end function;')
 
 from lmfdb.number_fields.number_field import make_disc_key
+from lmfdb.hilbert_modular_forms.web_HMF import construct_full_label
 
-def parse_label(field_label, weight, level_label, label_suffix):
-    if weight == [2 for i in range(len(weight))]:
-        weight_label = ''
-    elif weight == [weight[0] for i in range(len(weight))]:  # Parellel weight
-        weight_label = str(weight[0]) + '-'
-    else:
-        weight_label = str(weight) + '-'
-    return field_label + '-' + weight_label + level_label + '-' + label_suffix
 
 P = PolynomialRing(Rationals(), 3, ['w', 'e', 'x'])
 w, e, x = P.gens()
@@ -195,7 +188,7 @@ def import_data(hmf_filename, fileprefix=None, ferrors=None, test=True):
         assert level_dotlabel > 0
         level_label = str(level_norm) + '.' + str(level_dotlabel)
 
-        label = parse_label(field_label, weight, level_label, label_suffix)
+        label = construct_full_label(field_label, weight, level_label, label_suffix)
         short_label = level_label + '-' + label_suffix
 
         if len(data) == 3:
@@ -272,11 +265,6 @@ def import_data(hmf_filename, fileprefix=None, ferrors=None, test=True):
             assert info['hecke_eigenvalues'] == existing_form['hecke_eigenvalues']
             print "...duplicate"
 
-# def parse_label_old(field_label, weight, level_ideal, label_suffix):
-#    label_str = field_label + str(weight) + str(level_ideal) + label_suffix
-#    label_str = label_str.replace(' ', '')
-#    return label_str
-
 
 def repair_fields(D):
     F = hmf_fields.find_one({"label": '2.2.' + str(D) + '.1'})
@@ -338,7 +326,7 @@ def attach_new_label(f):
     try:
         ideal_label = F['ideal_labels'][F['ideals'].index(f['level_ideal'])]
         f['level_ideal_label'] = ideal_label
-        f['label'] = parse_label(f['field_label'], f['weight'], f['level_ideal_label'], f['label_suffix'])
+        f['label'] = construct_full_label(f['field_label'], f['weight'], f['level_ideal_label'], f['label_suffix'])
         hmf_forms.save(f)
         print f['label']
     except ValueError:
