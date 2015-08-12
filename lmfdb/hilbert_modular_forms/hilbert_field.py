@@ -123,13 +123,15 @@ class HilbertNumberField(WebNumberField):
             if filename:
                 self.init_from_file(filename)
             else:
-                raise ValueError("either label or fiilename must be specified to create a HilbertNumberField")
+                raise ValueError("either label or filename must be specified to create a HilbertNumberField")
 
 
     def init_from_label(self, label):
         print("Creating HilbertNumberField from label %s" % label)
         self.label = label
         self.Fdata = db_hmfnf().find_one({'label':label})
+        if not self.Fdata:
+            raise ValueError("No Hilbert field with label %s exists in the database" % label)
         self.ideals = self.Fdata['ideals']
         self.primes = self.Fdata['primes']
         self.var = findvar(self.ideals)
@@ -149,6 +151,9 @@ class HilbertNumberField(WebNumberField):
         for i, I in enumerate(self.primes_iter()):
             self.prime_index_dict[I['ideal']]=i
 
+    def ideal_from_str(self, idlstr):
+        return str2ideal(self.K(),idlstr)
+
     def _iter_ideals(self, primes=False, number=None):
         """
         Iterator through all ideals of self.  Delivers dicts with keys
@@ -161,7 +166,7 @@ class HilbertNumberField(WebNumberField):
         if primes:
             ideals = self.primes
         for idlstr in ideals:
-            N,n,idl,_ = str2ideal(self.K(),idlstr)
+            N,n,idl,_ = self.ideal_from_str(idlstr)
             assert idl.norm() == N and idl.smallest_integer() == n
             if N != norm:
                 ilabel = ZZ(1)
@@ -183,12 +188,14 @@ class HilbertNumberField(WebNumberField):
         try:
             return self.label_dict[idl]
         except KeyError:
+            print("Unable to find label for ideal %s" % idl)
             return None
 
     def ideal(self, lab):
         try:
             return self.ideal_dict[lab]
         except KeyError:
+            print("Unable to find ideal for label %s" % idl)
             return None
 
     def prime_label(self, idl):
@@ -198,27 +205,24 @@ class HilbertNumberField(WebNumberField):
         try:
             return self.prime_index_dict[idl]
         except KeyError:
+            print("Unable to find index of prime %s" % idl)
             return None
 
     def ideal_index(self, idl):
         try:
             return self.ideal_index_dict[idl]
         except KeyError:
+            print("Unable to find index of ideal %s" % idl)
             return None
 
     def prime(self, lab):
         return self.ideal(lab)
-        # for I in self.primes_iter():
-        #     if I['label']==lab:
-        #         return I['ideal']
-        # return None
 
     def init_from_file(self, filename):
         print("Creating HilbertNumberField from file %s" % filename)
         hmff = file(filename)
         if not hmff:
             raise ValueError("Could not open file %s" % filename)
-            return
         for L in hmff.readlines():
             if "NEWFORMS" in L:
                 # For the field we need read no further

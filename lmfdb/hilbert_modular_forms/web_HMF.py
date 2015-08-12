@@ -10,6 +10,8 @@ from lmfdb.utils import comma, make_logger, web_latex, encode_plot
 import sage.all
 from sage.all import latex, matrix, ZZ, QQ
 
+from lmfdb.hilbert_modular_forms.hilbert_field import HilbertNumberField
+
 logger = make_logger("hmf")
 
 hmf_forms = None
@@ -41,79 +43,103 @@ def construct_full_label(field_label, weight, level_label, label_suffix):
         weight_label = str(weight[0]) + '-'
     else:                                     # non-parallel weight
         weight_label = str(weight) + '-'
-    return field_label + '-' + weight_label + level_label + '-' + label_suffix
+    return ''.join([field_label, '-', weight_label, level_label, '-', label_suffix])
 
 class WebHMF(object):
     """
     Class for an Hilbert Modular Newform
     """
-    def __init__(self, dbdata):
-        """
-        Arguments:
+    def __init__(self, dbdata=None, label_or_field=None, L=None):
+        """Arguments:
 
             - dbdata: the data from the database
+
+            - label_or_field: a field label OR a HilbertNumberFIeld
+
+            - L: a string representing one newform from a raw data file
+
+        If dbdata is not None then it is expected to be a database
+        entry from which the class is initialised.  If dbdata is None,
+        then a form is constructed from the field label or field and
+        data string given.
+
         """
-        logger.debug("Constructing an instance of WebHMF class")
-        self.__dict__.update(dbdata)
+        if dbdata:
+            logger.debug("Constructing an instance of WebHMF class from database")
+            self.__dict__.update(dbdata)
+            self.dbdata = dbdata
+        else:
+            self.create_from_data_string(label_or_field,L)
         # All other fields are handled here
         self.make_form()
 
     @staticmethod
     def by_label(label):
         """
-        Searches for a specific Hilbert newforms in the forms
+        Searches for a specific Hilbert newform in the forms
         collection by its label.
         """
-        data = db_ec().find_one({"label" : label})
+        data = db_hmf_forms().find_one({"label" : label})
 
         if data:
             return WebHMF(data)
-        return "Hilbert newform %s not found" % label # caller must catch this and raise an error
+        raise ValueError("Hilbert newform %s not found" % label)
+        # caller must catch this and raise an error
 
-    @staticmethod
-    def from_data_string(label, L):
+    def create_from_data_string(self, label_or_field, L):
         """Takes an input line L from a raw data file and constructs the
         associated HMF object with given base field.
 
         String sample:
         <[31, 31, w + 12], "a", [-3, -2, 2, 4, -4, ...]>,
         """
-        if isinstance(label, str):
+        data = self.dbdata = {}
+        if isinstance(label_or_field, str):
+            label = label_or_field
             data['field_label'] = label
             F = HilbertNumberField(label)
-            if "not found" in F:
-                raise ValueError("No Hilbert nmber field with label %s is in the database" % label)
-        elif label == None:
+            if not F:
+                raise ValueError("No Hilbert number field with label %s is in the database" % label)
+        elif label_or_field == None:
             raise ValueError("Must specify a valid field label")
         else: # we were passed a HilbertNumberField already
-            F = label
+            F = label_or_field
             data['field_label'] = F.label
+        #print("data['field_label'] = %s" % data['field_label'])
 
         # The level
 
         i = L.find('[')
         j = L.find(']')
-        data['level_ideal'] = L[i,j+1].replace(" ","")
+        data['level_ideal'] = L[i:j+1]
+        #print("data['level_ideal'] = %s" % data['level_ideal'])
         N, n, alpha = data['level_ideal'][1:-1].split(',')
         data['level_norm'] = int(N)
-        level = str2ideal(F,data['level_ideal'])
+        #print("data['level_norm'] = %s" % data['level_norm'])
+        level = F.ideal_from_str(data['level_ideal'])[2]
+        #print("level = %s" % level)
         data['level_label'] = F.ideal_label(level)
+        #print("data['level_label'] = %s" % data['level_label'])
 
         # The weight
 
         data['parallel_weight'] = int(2)
         data['weight'] = str([data['parallel_weight']] * F.degree())
+        weight = [2] * F.degree()
 
         # The label
 
         i = L.find('"')
         j = L.find('"', i+1)
-        data['label_suffix'] = L[i,j+1].replace(" ","")
-        data['label'] = construct_full_label(field_label,
-                                             data['weight'],
+        data['label_suffix'] = L[i+1:j].replace(" ","")
+
+        data['label'] = construct_full_label(data['field_label'],
+                                             weight,
                                              data['level_label'],
                                              data['label_suffix'])
-        data['short_label'] = level_label + '-' + label_suffix
+        data['short_label'] = '-'.join([data['level_label'], data['label_suffix']])
+        #print("data['label'] = %s" % data['label'] )
+        #print("data['short_label'] = %s" % data['short_label'] )
 
         # The hecke polynomial and degree
 
@@ -133,17 +159,22 @@ class WebHMF(object):
 
         i = L.rfind("[")
         j = L.rfind("]")
-        data['hecke_eigenvalues'] = L[i+1:j].split(",")
+        data['hecke_eigenvalues'] = L[i+1:j].replace(" ","").split(",")
+        data['hecke_eigenvalues'] = [unicode(s) for s in data['hecke_eigenvalues']]
+        #print("hecke_eigenvalues = %s..." % data['hecke_eigenvalues'][:20])
 
         # Find (some of the) AL-eigenvalues
 
         BP = level.prime_factors()
-        BP_indices = [F.ideal_index(P) for P in BP]
-        BP_exponents = [level.valuation(P) fpr P in BP]
+        BP_indices = [F.prime_index(P) for P in BP]
+        print("BP_indices = %s" % BP_indices)
+        BP_exponents = [level.valuation(P) for P in BP]
+        #print("BP_exponents = %s" % BP_exponents)
         AL_eigs = [int(data['hecke_eigenvalues'][i]) for i in BP_indices]
+        #print("AL_eigs      = %s" % AL_eigs)
         if not all([(e==1 and eig in [-1,1]) or (eig==0)
                     for e,eig in zip(BP_exponents,AL_eigs)]):
-            raise ValueError("Some bad AL-eigenvalues found")
+            print("Some bad AL-eigenvalues found")
         # NB the following will put 0 for the eigenvalue for primes
         # whose quare divides the level; this will need fixing later.
         data['AL_eigenvalues'] = [[F.primes[i],data['hecke_eigenvalues'][i]] for i in BP_indices]
@@ -155,6 +186,40 @@ class WebHMF(object):
 
     def save_to_db(self):
         pass
+
+    def compare_with_db(self, field=None):
+        lab = self.dbdata['label']
+        f = WebHMF.by_label(lab)
+        if f==None:
+            print("No Hilbert newform in the database has label %s" % lab)
+            return False
+        if field==None:
+            field = HilbertNumberField(self.dbdata['field_label'])
+        agree = True
+        for key in self.dbdata.keys():
+            if key in ['is_base_change', 'is_CM', 'AL_eigenvalues_fixed']:
+                continue
+            if key=='hecke_eigenvalues':
+                if self.dbdata[key]!=f.dbdata[key]:
+                    agree = False
+                    print("Inconsistent data for HMF %s in field %s" % (lab,key))
+                    print("self has %s entries, \ndb   has %s entries" % (len(self.dbdata[key]),len(f.dbdata[key])))
+                    print("Entries differ at indices %s" % [i for i in range(len(self.dbdata[key])) if self.dbdata[key][i]!=f.dbdata[key][i]])
+            elif key=='level_ideal':
+                if self.dbdata[key]!=f.dbdata[key]:
+                    I = field.ideal_from_str(f.dbdata['level_ideal'])[2]
+                    J = field.ideal_from_str(self.dbdata['level_ideal'])[2]
+                    if I==J:
+                        print("OK, these are the same ideal")
+                    else:
+                        agree = False
+                        print("These are different ideals!")
+
+            else:
+                if self.dbdata[key]!=f.dbdata[key]:
+                    agree = False
+                    print("Inconsistent data for HMF %s in field %s" % (lab,key))
+        return agree
 
     def make_form(self):
         # To start with the data fields of self are just those from
