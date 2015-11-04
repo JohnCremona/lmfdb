@@ -20,17 +20,23 @@ from lmfdb.website import dbport
 from lmfdb.WebNumberField import WebNumberField
 from lmfdb.hilbert_modular_forms.hilbert_field import (findvar, niceideals,
  conjideals, str2ideal, HilbertNumberField)
+from pymongo import MongoClient
 
 print "calling base._init()"
 dbport=37010
-base._init(dbport, '')
+base._init(dbport)
 print "getting connection"
-conn = base.getDBConnection()
+C = base.getDBConnection()
+print "authenticating for the hmfs database"
+C['hmfs'].authenticate('editor', '282a29103a17fbad')
+print "authenticating for the numberfields database"
+#FIXME: use readonly login/password
+C['numberfields'].authenticate('editor', '282a29103a17fbad')
 print "setting hmfs, fields and forms"
-hmfs = conn.hmfs
+hmfs = C.hmfs
 fields = hmfs.fields
 forms = hmfs.forms
-nfcurves = conn.elliptic_curves.nfcurves
+nfcurves = C.elliptic_curves.nfcurves
 
 # Cache of WebNumberField and FieldData objects to avoid re-creation
 WNFs = {}
@@ -135,7 +141,9 @@ def conjform(f, g, ig, cideals, cprimes, F): #ig index of g in auts
     del fg['_id']
     return fg
 
-def checkadd_conj(label, min_level_norm=0, max_level_norm=None, fix=False):
+def checkadd_conj(label, min_level_norm=0, max_level_norm=None, fix=False, buildform=False):
+    if fix:
+        buildform = True
     count = 0
     query = {}
     query['field_label'] = label
@@ -168,8 +176,9 @@ def checkadd_conj(label, min_level_norm=0, max_level_norm=None, fix=False):
             fgdb = forms.find_one({'label':fg_label})
             if fgdb == None:
                 print("conjugate not present")
-                if fix:
+                if buildform:
                     fg = conjform(f, g, ig, cideals, cprimes, F)
+                if fix:
                     if fg != None: #else: is a lift (self-conjugate), should have been detected
                         print("adding it : "+fg['label'])
                         forms.insert(fg)
