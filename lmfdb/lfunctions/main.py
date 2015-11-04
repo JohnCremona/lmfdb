@@ -41,7 +41,7 @@ def l_function_history():
 
     bc = [('L-functions', url_for('.l_function_top_page')),
           (t, url_for('.l_function_history'))]
-    return render_template(_single_knowl, title=t, kid='lfunction.intro', body_class='', bread=bc)
+    return render_template(_single_knowl, title=t, kid='lfunction.history', body_class='', bread=bc)
     
 
 
@@ -178,6 +178,8 @@ def set_info_for_start_page():
 
     info['title'] = 'L-functions'
     info['bread'] = [('L-functions', url_for('.l_function_top_page'))]
+
+    info['learnmore'] = [('History of L-functions', '/L/history')]
 
     return info
 
@@ -881,7 +883,7 @@ def render_zeroesLfunction(request, arg1, arg2, arg3, arg4, arg5, arg6, arg7, ar
     if len(positiveZeros) > 2 and len(negativeZeros) > 2:  # Add comma and empty space between negative and positive
         negativeZeros = negativeZeros.replace("]", ", ]")
 
-    return "<span class='redhighlight'>{0}</span><span class='bluehighlight'>{1}</span>".format(
+    return "<span class='redhighlight'>{0}</span><span class='positivezero'>{1}</span>".format(
         negativeZeros[1:len(negativeZeros) - 1], positiveZeros[1:len(positiveZeros) - 1])
 
 
