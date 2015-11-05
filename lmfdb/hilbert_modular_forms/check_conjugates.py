@@ -108,7 +108,10 @@ def conjform_label(f, ig, cideals):
 
 def conjform(f, g, ig, cideals, cprimes, F): #ig index of g in auts
     if f['is_base_change'][0:3] == 'yes':
-        return None
+        print("This form is a base-change.")
+        #return None
+        #if the form is a base-change, but not from Q,
+        #we should still add its conjugate
     fg = copy(f)
 
     fg['level_label'] = cideals[(f['level_label'],ig)]
@@ -147,6 +150,7 @@ def checkadd_conj(label, min_level_norm=0, max_level_norm=None, fix=False, build
     if fix:
         buildform = True
     count = 0
+    countmiss = 0
     query = {}
     query['field_label'] = label
     query['level_norm'] = {'$gte' : int(min_level_norm)}
@@ -178,6 +182,7 @@ def checkadd_conj(label, min_level_norm=0, max_level_norm=None, fix=False, build
             fgdb = forms.find_one({'label':fg_label})
             if fgdb == None:
                 print("conjugate not present")
+                countmiss += 1
                 if buildform:
                     fg = conjform(f, g, ig, cideals, cprimes, F)
                 if fix:
@@ -185,9 +190,31 @@ def checkadd_conj(label, min_level_norm=0, max_level_norm=None, fix=False, build
                         print("adding it : "+fg['label'])
                         forms.insert(fg)
                         count += 1
-    print("\nAdded "+str(count)+" new conjugate forms.")
+    print("\nMissing "+str(countmiss)+" conjugate forms (possibly counted multiple times if several nontrivial automorphisms).")
+    print("Added "+str(count)+" new conjugate forms.")
     return None
 
+def forms_equal(f,g):
+    fH = f['hecke_eigenvalues']
+    gH = g['hecke_eigenvalues']
+    for i in range(min(len(fH),len(gH))):
+        if fH[i] != gH[i]:
+            return False
+    return True
+
+def check_multiplicity_one(label):
+    F = HilbertNumberField(label)
+    count = 0
+    for N in F.ideals_iter():
+        Lf = forms.find({'field_label':label, 'level_label':N['label']})
+        Lf = [f for f in Lf]
+        n = len(Lf)
+        for i in range(n):
+            for j in range(i+1,n):
+                if forms_equal(Lf[i],Lf[j]):
+                    count += 1
+                    print "duplicates: "+Lf[i]['label']+" and "+Lf[j]['label']
+    print("Found "+str(count)+" duplicate forms.")
 
 def fix_data_fields(min_level_norm=0, max_level_norm=None, fix=False):
     r""" One-off utility to:
