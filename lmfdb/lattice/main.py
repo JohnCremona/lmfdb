@@ -76,13 +76,15 @@ def lattice_render_webpage():
     args = request.args
     if len(args) == 0:
         counts = get_stats().counts()
-        dim_list= range(2, counts['max_dim']+1, 1)
-        class_number_list=range(1, counts['max_class_number']+1, 1)
-        det_list_endpoints = [1, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
+        dim_list= range(1, 11, 1)
+        max_class_number=20
+        class_number_list=range(1, max_class_number+1, 1)
+        det_list_endpoints = [1, 5000, 10000, 20000, 25000, 30000]
 #        if counts['max_det']>3000:
 #            det_list_endpoints=det_list_endpoints+range(3000, max(int(round(counts['max_det']/1000)+2)*1000, 10000), 1000)
         det_list = ["%s-%s" % (start, end - 1) for start, end in zip(det_list_endpoints[:-1], det_list_endpoints[1:])]
-        info = {'dim_list': dim_list,'class_number_list': class_number_list,'det_list': det_list}
+        name_list = ["A2","Z2", "D3", "D3*", "3.1942.3884.56.1", "A5", "E8", "A14", "Leech"]
+        info = {'dim_list': dim_list,'class_number_list': class_number_list,'det_list': det_list, 'name_list': name_list}
         credit = lattice_credit
         t = 'Integral Lattices'
         bread = [('Lattice', url_for(".lattice_render_webpage"))]
@@ -164,7 +166,7 @@ def lattice_search(**args):
 #        start = start_default
 
     info['query'] = dict(query)
-    res = C.Lattices.lat.find(query).sort([('dim', ASC), ('det', ASC), ('label', ASC)]).skip(start).limit(count)
+    res = C.Lattices.lat.find(query).sort([('dim', ASC), ('det', ASC), ('level', ASC), ('class_number', ASC), ('label', ASC)]).skip(start).limit(count)
     nres = res.count()
 
     # here we are checking for isometric lattices if the user enters a valid gram matrix but not one stored in the database_names, this may become slow in the future: at the moment we compare against list of stored matrices with same dimension and determinant (just compare with respect to dimension is slow)
@@ -253,17 +255,27 @@ def render_lattice_webpage(**args):
     info['kissing']=int(f['kissing'])
     info['aut']=int(f['aut'])
 
-    if f['dim']==1:
-        info['shortest']=str(f['shortest']).strip('[').strip(']')
+    if f['shortest']=="":
+        info['shortest']==f['shortest']
     else:
-        if info['dim']*info['kissing']<100:
-            info['shortest']=[str([tuple(v)]).strip('[').strip(']').replace('),', '), ') for v in f['shortest']]
+        if f['dim']==1:
+            info['shortest']=str(f['shortest']).strip('[').strip(']')
         else:
-            max_vect_num=int(round(100/(info['dim'])));
-            info['shortest']=[str([tuple(f['shortest'][i])]).strip('[').strip(']').replace('),', '), ') for i in range(max_vect_num+1)]
-            info['all_shortest']="no"
-    info['download_shortest'] = [
-        (i, url_for(".render_lattice_webpage_download", label=info['label'], lang=i, obj='shortest_vectors')) for i in ['gp', 'magma','sage']]
+            if info['dim']*info['kissing']<100:
+                info['shortest']=[str([tuple(v)]).strip('[').strip(']').replace('),', '), ') for v in f['shortest']]
+            else:
+                max_vect_num=min(int(round(100/(info['dim']))), int(round(info['kissing']/2))-1);
+                info['shortest']=[str([tuple(f['shortest'][i])]).strip('[').strip(']').replace('),', '), ') for i in range(max_vect_num+1)]
+                info['all_shortest']="no"
+        info['download_shortest'] = [
+            (i, url_for(".render_lattice_webpage_download", label=info['label'], lang=i, obj='shortest_vectors')) for i in ['gp', 'magma','sage']]
+
+    if f['name']==['Leech']:
+        info['shortest']=[str([1,-2,-2,-2,2,-1,-1,3,3,0,0,2,2,-1,-1,-2,2,-2,-1,-1,0,0,-1,2]), 
+str([1,-2,-2,-2,2,-1,0,2,3,0,0,2,2,-1,-1,-2,2,-1,-1,-2,1,-1,-1,3]), str([1,-2,-2,-1,1,-1,-1,2,2,0,0,2,2,0,0,-2,2,-1,-1,-1,0,-1,-1,2])]
+        info['all_shortest']="no"
+        info['download_shortest'] = [
+            (i, url_for(".render_lattice_webpage_download", label=info['label'], lang=i, obj='shortest_vectors')) for i in ['gp', 'magma','sage']]
 
     ncoeff=20
     if f['theta_series'] != "":
@@ -279,7 +291,7 @@ def render_lattice_webpage(**args):
         if info['dim']*info['class_number']<50:
             info['genus_reps']=[vect_to_matrix(n) for n in f['genus_reps']]
         else:
-            max_matrix_num=int(round(25/(info['dim'])));
+            max_matrix_num=min(int(round(25/(info['dim']))), info['class_number']);
             info['all_genus_rep']="no"
             info['genus_reps']=[vect_to_matrix(f['genus_reps'][i]) for i in range(max_matrix_num+1)]
     info['download_genus_reps'] = [
@@ -293,6 +305,8 @@ def render_lattice_webpage(**args):
     else:
         info['name'] == ""
     info['comments']=str(f['comments'])
+    if 'Leech' in info['comments']: # no need to duplicate as it is in the name
+        info['comments'] = ''
     if info['name'] == "":
         t = "Integral Lattice %s" % info['label']
     else:
@@ -433,7 +447,10 @@ def download_lattice_full_lists_v(**args):
     c = download_comment_prefix[lang]
     outstr = c + ' Full list of normalized minimal vectors downloaded from the LMFDB on %s. \n\n'%(mydate)
     outstr += download_assignment_start[lang] + '\\\n'
-    outstr += str(res['shortest'])
+    if res['name']==['Leech']:
+        outstr += str(res['shortest']).replace("'", "").replace("u", "")
+    else:
+        outstr += str(res['shortest'])
     outstr += download_assignment_end[lang]
     outstr += '\n'
     return outstr
