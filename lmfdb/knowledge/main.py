@@ -179,6 +179,22 @@ def ref_to_link(txt):
 
     return '[' + ans + ']' + " " + everythingelse
 
+def md_latex_accents(text):
+    """
+    Convert \"o to &ouml; and similar TeX-style markup.
+    """
+
+    knowl_content = text
+
+    knowl_content = re.sub(r'\\"([a-zA-Z])',r"&\1uml;",knowl_content)
+    knowl_content = re.sub(r'\\"{([a-zA-Z])}',r"&\1uml;",knowl_content)
+    knowl_content = re.sub(r"\\'([a-zA-Z])",r"&\1acute;",knowl_content)
+    knowl_content = re.sub(r"\\'{([a-zA-Z])}",r"&\1acute;",knowl_content)
+    knowl_content = re.sub(r"\\`([a-zA-Z])",r"&\1grave;",knowl_content)
+    knowl_content = re.sub(r"\\`{([a-zA-Z])}",r"&\1grave;",knowl_content)
+
+    return knowl_content
+
 def md_preprocess(text):
     """
     Markdown preprocessor: html paragraph breaks before display math,
@@ -191,6 +207,8 @@ def md_preprocess(text):
 
     while "\\cite{" in knowl_content:
         knowl_content = re.sub(r"\\cite({.*)",ref_to_link,knowl_content,0,re.DOTALL)
+
+    knowl_content = md_latex_accents(knowl_content)
 
     return knowl_content
 
@@ -276,6 +294,7 @@ def test():
 @knowledge_page.route("/edit/<ID>")
 @login_required
 def edit(ID):
+    from pymongo.errors import OperationFailure 
     if not allowed_knowl_id.match(ID):
         flask.flash("""Oops, knowl id '%s' is not allowed.
                   It must consist of lowercase characters,
@@ -286,12 +305,20 @@ def edit(ID):
     from knowl import is_locked, set_locked
     lock = False
     if request.args.get("lock", "") != 'ignore':
-        lock = is_locked(knowl.id)
+        try:
+            lock = is_locked(knowl.id)
+        except OperationFailure as e:
+            logger.info("Oops, failed to get the lock. Error: %s" %e)
+            pass;
     # lock, if either lock is false or (lock is active), current user is editing again
     author_edits = lock and lock['who'] == current_user.get_id()
     logger.debug(author_edits)
     if not lock or author_edits:
-        set_locked(knowl, current_user.get_id())
+        try:
+            set_locked(knowl, current_user.get_id())
+        except OperationFailure as e:
+            logger.info("Oops, failed to set the lock. Error: %s" %e)
+            pass;
     if author_edits:
         lock = False
 
@@ -515,11 +542,12 @@ def cleanup():
 def index():
     # bypassing the Knowl objects to speed things up
     from knowl import get_knowls
-    try:
-        get_knowls().ensure_index('_keywords')
-        get_knowls().ensure_index('cat')
-    except pymongo.errors.OperationFailure:
-        pass
+# See issue #1169    
+#    try:
+#        get_knowls().ensure_index('_keywords')
+#        get_knowls().ensure_index('cat')
+#    except pymongo.errors.OperationFailure:
+#        pass
 
     cur_cat = request.args.get("category", "")
 

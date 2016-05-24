@@ -17,6 +17,10 @@ url: http://www2.warwick.ac.uk/fac/sci/maths/people/staff/anni/
 ---
 name: Salman Baig
 ---
+name: Sarunas Burdulis
+affil: Dartmouth College
+url: https://math.dartmouth.edu/~sarunas/
+---
 name: Jennifer Balakrishnan
 url: http://www.math.harvard.edu/~jen/
 affil: University of Oxford
@@ -88,12 +92,17 @@ name: Tim Dokchitser
 url: http://www.maths.bris.ac.uk/~matyd/
 affil: University of Bristol
 ---
+name: Taylor Dupuy
+url: http://www.uvm.edu/~tdupuy/
+affil: University of Vermont
+email: taylor.dupuy@uvm.edu
+---
 name: Bas Edixhoven
 affil: Universiteit Leiden
 ---
 name: Stephan Ehlen
-url: http://www3.mathematik.tu-darmstadt.de/index.php?id=2037
-affil: Technische Universität Darmstadt
+url: http://www.stephanehlen.de
+affil: McGill University
 ---
 name: David W. Farmer
 email: farmer@aimath.org
@@ -155,6 +164,9 @@ affil: Universität Zürich
 name: Watson Ladd
 affil: University of California
 ---
+name: Anthony Lazzaro
+url: http://skynab.net/
+---
 name: Stefan Lemurell
 url: http://www.math.chalmers.se/~sj/
 affil: Göteborgs Universitet
@@ -184,6 +196,11 @@ name: Warren Moore
 email: warrenmoore30@yahoo.co.uk
 affil: University of Warwick
 ---
+name: Bartosz Naskręcki
+email: nasqret@gmail.com
+affil: University of Bristol
+url: https://bnaskrecki.faculty.wmi.amu.edu.pl/
+---
 name: Aurel Page
 url: http://www.normalesup.org/~page/index-en.html
 email: aurel.page@normalesup.org
@@ -211,6 +228,10 @@ name: Nathan Ryan
 url: http://www.eg.bucknell.edu/~ncr006/
 affil: Bucknell University
 ---
+name: George J. Schaeffer
+email: gschaeff@stanford.edu
+affil: Stanford University
+---
 name: Harald Schilly
 url: http://harald.schil.ly
 email: harald@schil.ly
@@ -231,7 +252,7 @@ affil: Reed College
 url: http://people.reed.edu/~jerry/
 ---
 name: Jeroen Sijsling
-affil: Dartmouth College
+affil: Universität Ulm
 url: https://sites.google.com/site/sijsling/
 ---
 name: Samir Siksek
