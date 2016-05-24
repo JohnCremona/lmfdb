@@ -5,6 +5,7 @@ import re
 import time
 import pymongo
 from pymongo import ASCENDING, DESCENDING
+from operator import mul
 import lmfdb.base
 from lmfdb.base import app
 from flask import Flask, flash, session, g, render_template, url_for, request, redirect, make_response, send_file
@@ -16,8 +17,8 @@ from lmfdb.utils import ajax_more, image_src, web_latex, to_dict, comma, random_
 from lmfdb.search_parsing import parse_bool, parse_ints, parse_signed_ints, parse_bracketed_posints, parse_count, parse_start
 from lmfdb.number_fields.number_field import make_disc_key
 from lmfdb.genus2_curves import g2c_page, g2c_logger
-from lmfdb.genus2_curves.isog_class import G2Cisog_class, url_for_label, isog_url_for_label
-from lmfdb.genus2_curves.web_g2c import WebG2C, g2cdb, list_to_min_eqn, isog_label, st_group_name, st0_group_name, aut_group_name, boolean_name, globally_solvable_name
+from lmfdb.genus2_curves.isog_class import G2Cisog_class, url_for_label, isog_url_for_label, st_group_name, st_group_href
+from lmfdb.genus2_curves.web_g2c import WebG2C, g2cdb, list_to_min_eqn, isog_label, st0_group_name, aut_group_name, boolean_name, globally_solvable_name
 
 import sage.all
 from sage.all import ZZ, QQ, latex, matrix, srange
@@ -257,6 +258,8 @@ def genus2_curve_search(**args):
         parse_ints(info,query,'cond','conductor')
         parse_ints(info,query,'num_rat_wpts','Weierstrass points')
         parse_ints(info,query,'torsion_order')
+        if 'torsion' in query and not 'torsion_order' in query:
+            query['torsion_order'] = reduce(mul,[int(n) for n in query['torsion']],1)
         parse_ints(info,query,'two_selmer_rank','2-Selmer rank')
         parse_ints(info,query,'analytic_rank','analytic rank')
         # G2 invariants and drop-list items don't require parsing -- they are all strings (supplied by us, not the user)
@@ -302,6 +305,7 @@ def genus2_curve_search(**args):
             v_clean["is_gl2_type_display"] = ''
         v_clean["equation_formatted"] = list_to_min_eqn(v["min_eqn"])
         v_clean["st_group_name"] = st_group_name(isogeny_class['st_group'])
+        v_clean["st_group_href"] = st_group_href(isogeny_class['st_group'])
         v_clean["analytic_rank"] = v["analytic_rank"]
         res_clean.append(v_clean)
 

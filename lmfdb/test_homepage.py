@@ -68,8 +68,9 @@ class HomePageTest(LmfdbTest):
         Check that the links in Box 5 work.
         """
         homepage = self.tc.get("/").data
-        self.check(homepage, "/bigpicture", 'some varieties are modular')
-        self.check(homepage, "/knowledge/", 'Recently modified Knowls')
+        self.check(homepage, "/universe", 'universe')
+        # removed in PR #1167
+        #self.check(homepage, "/knowledge/", 'Recently modified Knowls')
 
     # Box 6
     def test_box6(self):

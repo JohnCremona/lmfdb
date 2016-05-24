@@ -29,6 +29,25 @@ def p2sage(s):
     else:
         return z
 
+def string2number(s):
+    # a start to replace p2sage (used for the paramters in the FE)
+
+    strs = str(s)
+    try:
+        if 'I' in strs:
+            return CDF(strs)
+        elif '/' in strs:
+            return Rational(strs)
+        elif strs=='0.5':  # Temporary fix because 0.5 in db for EC
+            return Rational('1/2')
+        elif '.' in strs:
+            return float(strs)
+        else:
+            return Integer(strs)
+    except:
+        return s
+
+    
 def pair2complex(pair):
     ''' Turns the pair into a complex number.
     '''
@@ -988,5 +1007,5 @@ def signOfEmfLfunction(level, weight, coefs, tol=10 ** (-7), num=1.3):
     if abs(abs(sign) - 1) > tol:
         logger.critical("Not enough coefficients to compute the sign of the L-function.")
         sign = "Not able to compute."
-        sign = 1000
+        sign = 1 # wrong, but we need some type of error handling here.
     return sign

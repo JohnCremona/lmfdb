@@ -44,6 +44,9 @@ import riemann
 import logging
 import lattice
 import higher_genus_w_automorphisms
+import modlmf
+import rep_galois_modl
+
 
 import raw
 from modular_forms.maass_forms.picard import mwfp
@@ -85,6 +88,7 @@ map(root_static_file, ['favicon.ico'])
 @app.route("/robots.txt")
 def robots_txt():
     if "www.lmfdb.org".lower() in request.url_root.lower():
+        import os
         fn = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "robots.txt")
         if os.path.exists(fn):
             return open(fn).read()
@@ -243,6 +247,7 @@ def get_configuration():
                                         # undocumented, see below
                                         "enable-reloader", "disable-reloader",
                                         "enable-debugger", "disable-debugger",
+                                        "enable-profiler"
                                         ])
         except getopt.GetoptError, err:
             sys.stderr.write("%s: %s\n" % (sys.argv[0], err))
@@ -279,6 +284,8 @@ def get_configuration():
                 flask_options["use_debugger"] = True
             elif opt == "--disable-debugger":
                 flask_options["use_debugger"] = False
+            elif opt =="--enable-profiler":
+                flask_options["PROFILE"] = True
       except:
           pass # something happens on the server -> TODO: FIXME
     
@@ -294,6 +301,8 @@ def get_configuration():
     replicaset =
     read_preference = NEAREST
     """
+    config_dir = '/'.join( os.path.dirname(os.path.abspath(__file__)).split('/')[0:-1])
+    mongo_client_config_filename = '{0}/{1}'.format(config_dir,mongo_client_config_filename)
     if os.path.exists(mongo_client_config_filename):
         from ConfigParser import ConfigParser;
         parser = ConfigParser()
@@ -311,6 +320,13 @@ def get_configuration():
                         except ValueError:
                             #it wasn't a number...
                             pass;
+                elif key == "replicaset":
+                    #if the string is empty
+                    if not value:
+                        #enforcing None to be the default if
+                        mongo_client_options["replicaset"] = None
+                    else: 
+                        mongo_client_options["replicaset"] = value
                 else:
                     mongo_client_options[key] = value        
 
@@ -320,6 +336,7 @@ def get_configuration():
     return { 'flask_options' : flask_options, 'mongo_client_options' : mongo_client_options}
 
 configuration = None
+
 
 def main():
     set_logfocus(logfocus)
@@ -332,6 +349,12 @@ def main():
     global configuration
     if not configuration:
         configuration = get_configuration()
+    if "PROFILE" in configuration['flask_options'] and configuration['flask_options']["PROFILE"]:
+        print "Profiling!"
+        from werkzeug.contrib.profiler import ProfilerMiddleware
+        app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions = [30], sort_by=('cumulative','time','calls'))
+        del configuration['flask_options']["PROFILE"]
+
     app.run(**configuration['flask_options'])
 
 if True:

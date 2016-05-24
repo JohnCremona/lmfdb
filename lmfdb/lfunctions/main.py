@@ -526,11 +526,11 @@ def initLfunction(L, args, request):
                         replace('/Lfunction/', '/L/Plot/').
                         replace('/L-function/', '/L/Plot/'))  # info['plotlink'] = url_for('plotLfunction',  **args)
 #    # an inelegant way to remove the plot in certain cases
-#    try: 
-#        if not L.fromDB and not L.plot:
-#            info['plotlink'] = ""
-#    except:
-#        pass
+    if L.Ltype() == 'ellipticmodularform':
+        if ( (L.number == 1 and (1 + L.level) * L.weight > 50) or 
+               (L.number > 1 and L.level * L.weight > 50)):
+            info['zeroeslink'] = ""
+            info['plotlink'] = ""
 
 
     info['bread'] = []
@@ -619,11 +619,11 @@ def initLfunction(L, args, request):
         for i in range(1, L.nr_of_curves_in_class + 1):
             info['friends'].append(('Elliptic curve ' + label + str(i), friendlink + str(i)))
         if L.modform:
-            info['friends'].append(('Modular form ' + label.replace('.', '.2'), url_for("emf.render_elliptic_modular_forms",
-                                                                                        level=L.modform['level'], weight=2, character=0, label=L.modform['iso'])))
-            info['friends'].append(('L-function ' + label.replace('.', '.2'),
-                                    url_for('.l_function_emf_page', level=L.modform['level'],
-                                            weight=2, character=0, label=L.modform['iso'], number=0)))
+            info['friends'].append(('Modular form ' + label.replace('.', '.2'), url_for("emf.render_elliptic_modular_forms", level=L.modform['level'], weight=2, character=1, label=L.modform['iso'])))
+            # We don't want the modular form's L-function to be a friend of the elliptic curve L-function since they are the same!
+            # info['friends'].append(('L-function ' + label.replace('.', '.2'),
+            #                         url_for('.l_function_emf_page', level=L.modform['level'],
+            #                             weight=2, character=1, label=L.modform['iso'], number=0)))
         info['friends'].append(
             ('Symmetric square L-function', url_for(".l_function_ec_sym_page",
                                                     power='2', label=label)))
@@ -633,7 +633,7 @@ def initLfunction(L, args, request):
                                       (label, url_for('.l_function_ec_page', label=label))])
     elif L.Ltype() == 'genus2curveQ':
         # should use url_for
-        info['friends'] = [('isogeny class ' + L.label, "/Genus2Curve/Q/" + L.label.replace(".","/"))]
+        info['friends'] = [('Isogeny class ' + L.label, "/Genus2Curve/Q/" + L.label.replace(".","/"))]
 
     elif L.Ltype() == 'ellipticmodularform':
         friendlink = friendlink.rpartition('/')[0] # Strips off the embedding
@@ -768,7 +768,8 @@ def initLfunction(L, args, request):
     else:
         lcalcUrl = request.url + '&download=lcalcfile'
 
-    info['downloads'] = [('Lcalcfile', lcalcUrl)]
+    if L.Ltype() != 'dirichlet':
+        info['downloads'] = [('Lcalcfile', lcalcUrl)]
     return info
 
 
@@ -907,6 +908,7 @@ def getLfunctionPlot(request, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, ar
     pythonL = generateLfunctionFromUrl(
         arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, to_dict(request.args))
 
+    plotrange = 30
     if hasattr(pythonL,"lfunc_data"):
         if pythonL.lfunc_data is None:
             return ""
@@ -924,9 +926,12 @@ def getLfunctionPlot(request, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, ar
         # FIXME there could be a filename collission
         #F = [(i, L.hardy_z_function(CC(.5, i)).real()) for i in srange(-30, 30, .1)]
         plotStep = .1
-        F = [(i, L.hardy_z_function(i).real()) for i in srange(-30, 30, plotStep)]
+    #    if pythonL._Ltype == "hilbertmodularform":
+        if pythonL._Ltype not in ["riemann", "maass", "ellipticmodularform", "ellipticcurveQ"]:
+            plotrange = 12
+        F = [(i, L.hardy_z_function(i).real()) for i in srange(-1*plotrange, plotrange, plotStep)]
     interpolation = spline(F)
-    F_interp = [(i, interpolation(i)) for i in srange(-30, 30, 0.05)]
+    F_interp = [(i, interpolation(i)) for i in srange(-1*plotrange, plotrange, 0.05)]
     p = line(F_interp)
 #    p = line(F)    # temporary hack while the correct interpolation is being implemented
     
