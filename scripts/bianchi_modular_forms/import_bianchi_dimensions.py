@@ -144,7 +144,9 @@ def dimtab(line, gl_or_sl = "gl"):
         dim_key: dim_data,
     }
 
-def dimtabeis(line, gl_or_sl = "gl"):
+gl_or_sl = "gl"
+
+def dimtabeis(line):
     r""" Parses one line from a dimtabeis file.  Returns a complete entry
     for the dimensions collection.
 
@@ -157,13 +159,19 @@ def dimtabeis(line, gl_or_sl = "gl"):
     11 	2 	[81,6,3] 	9 	2 	0 	7
 
     """
-    if line[0] =="#":  return '', {}
+    global  gl_or_sl
+    print line
+    if line[0] =="#":
+	if "SL2" in line:
+		gl_or_sl = "sl"
+	elif "GL2" in line:
+	 	gl_or_sl = "gl"
+        return '', {}
     data = split(line)
     # Skip header lines
-    if data[0] in ["Table","Field"]:  return '', {}
+    #if data[0] in ["Table","Field"]:  return '', {}
 
-    field = int(data[0])
-    field_label = "2.0.{}.1".format([0,4,8,3,0,0,0,7,0,0,0,11][field])
+    field_label = data[0]
     K = field_from_label(field_label)
     d, s, field_absdisc, n = [int(x) for x in field_label.split(".")]
     weight = int(data[1])
@@ -175,8 +183,8 @@ def dimtabeis(line, gl_or_sl = "gl"):
     level_label = convert_ideal_label(K, level_label)
     label = '-'.join([field_label,level_label])
     #all_dim = int(data[3]) # not used
-    cuspidal_dim = int(data[4])
-    new_cuspidal_dim = int(data[5])
+    cuspidal_dim = int(data[3])
+    new_cuspidal_dim = int(data[4])
     dim_data = {str(weight): {'cuspidal_dim': cuspidal_dim, 'new_dim': new_cuspidal_dim}}
     dim_key = 'gl2_dims' if gl_or_sl == "gl" else 'sl2_dims'
     return label, {
@@ -188,7 +196,7 @@ def dimtabeis(line, gl_or_sl = "gl"):
         dim_key: dim_data,
     }
 
-def upload_to_db(base_path, filename, insert=True):
+def upload_to_db(base_path, filename, insert=False):
     #dims_filename = ".".join(['dimtab',suffix])
     dims_filename = filename
     file_list = [dims_filename]
@@ -199,13 +207,13 @@ def upload_to_db(base_path, filename, insert=True):
         h = open(os.path.join(base_path, f))
         print "opened %s" % os.path.join(base_path, f)
 
-        parse = globals()[f[:f.find('.')]]
+        #parse = globals()[f[:f.find('.')]]
 
         count = 0
         for line in h.readlines():
-            if line[0]=='#':
-                continue
-            label, data = parse(line)
+            # if line[0]=='#':
+            #    continue
+            label, data = dimtabeis(line)
             if label=='':
                 continue
             if count%5000==0:
@@ -223,8 +231,8 @@ def upload_to_db(base_path, filename, insert=True):
                         print("After update, space[{}] = {}".format(key,space[key]))
                     else:
                         if space[key] != data[key]:
-                            print("space[{}] = {}".format(key,space[key]))
-                            print("data[{}] = {}".format(key,data[key]))
+                            #print("space[{}] = {}".format(key,space[key]))
+                            #print("data[{}] = {}".format(key,data[key]))
                             raise RuntimeError("Inconsistent data for %s" % label)
                 else:
                     space[key] = data[key]
@@ -238,7 +246,7 @@ def upload_to_db(base_path, filename, insert=True):
         count = 0
         print("inserting data one at a time...")
         for val in vals:
-            #print val
+            print val
             dims.update_one({'label': val['label']}, {"$set": val}, upsert=True)
             count += 1
             if count % 100 == 0:
