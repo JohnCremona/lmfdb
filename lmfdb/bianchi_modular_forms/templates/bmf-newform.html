@@ -1,0 +1,89 @@
+{% extends 'homepage.html' %}
+{% block content %}
+
+{% if info.err  %}
+{{info.err}}
+{% else %}
+
+  <h2>  Base Field: {{data.field_knowl |safe}}  </h2>
+
+  <h2>  Level: ${{ data.level_ideal }}$ of norm {{ data.level_norm }}
+  (label {{data.level_label}}) </h2>
+
+
+<h2> Form </h2>
+
+<p>
+<table>
+{% if data.dimension > 1 %}
+<tr><td> Dimension:<td> {{ data.dimension }} </tr>
+{% endif %}
+<tr><td> CM:<td> {{data.cm}} </tr>
+<tr><td> base-change:<td> {{data.bc}} </tr>
+<tr><td> parent newspace dimension:<td> {{ data.newspace_dimension }} </tr>
+</table>
+</p>
+
+<h2>  Atkin-Lehner eigenvalues  </h2>
+
+{% if data.AL_eigs %} 
+<p>
+<table class="ntdata" cellpadding=5>
+<tr>
+<th>Norm</th>
+<th>Prime</th>
+<th>Eigenvalue</th>
+</tr>
+{% for entry in data.AL_table: %}
+<tr>
+<td>{{entry[0]}}</td>
+<td>{{entry[1]}}</td>
+<td align=right>{{entry[2]}}</td>
+</tr>
+{% endfor %}
+</table>
+</p>
+{% else %}
+<p>None</P>
+{% endif %}
+
+  <h2>  Hecke eigenvalues  </h2>
+
+<p>
+  The database contains {{data.nap}} eigenvalues{% if data.nap0 <
+  data.nap %} of which we only show {{data.nap0}}{%endif%}.
+</p>
+
+<table class="ntdata" cellpadding=5>
+<tr>
+<th>Norm</th>
+<th>Prime</th>
+<th>Eigenvalue</th>
+</tr>
+{% for entry in data.hecke_table: %}
+<tr>
+<td>{{entry[0]}}</td>
+<td>{{entry[1]}}</td>
+<td align=right>{{entry[2]}}</td>
+</tr>
+{% endfor %}
+</table>
+
+{#
+<form>
+<table>
+<tr>
+<td>Display number of eigenvalues</td>
+<td><input type='text' name='numeigs' placeholder='20' size=10>
+</tr>
+<tr>
+<td colspan=3><button type='submit' value='display'>Display</button>
+</td>
+</tr>
+</table>
+</form>
+#}
+
+{% endif %}
+
+{% endblock %}
