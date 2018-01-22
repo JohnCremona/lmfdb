@@ -247,7 +247,7 @@ def read_xtorsion_growth_data(base_path, filename, degree, maxlines=0):
 
     for line in h.readlines():
         count += 1
-        if count%10000==0:
+        if count%100000==0:
             print "read %s lines" % count
         if maxlines and count>maxlines:
             break
@@ -331,15 +331,29 @@ def write_tordata(tordata, base_path='', degrees = None, maxlines=0):
     else:
         degrees = [str(d) for d in degrees]
 
+    sorted_labels = None
     for d in degrees:
         f = os.path.join(base_path, "growth{}x.000000-399999".format(d))
         h = open(f, mode='w')
         print "opened {}".format(f)
         td = tordata[d]
+        if sorted_labels==None:
+            sorted_labels = td.keys()
+            sorted_labels.sort(key=clabel_sort_key)
         count = 0
-        for lab, dat in td.iteritems():
+        for lab in sorted_labels:
+            dat = td[lab]
             h.write(" ".join([lab]+["[{}]:{}".format(T,F.replace(":",".")) for F,T in dat.items()]) + "\n")
             count +=1
             if count==maxlines:
                 break
         h.close()
+
+### sorting utilities
+
+from sage.databases.cremona import class_to_int
+from lmfdb.elliptic_curves.web_ec import split_cremona_label
+
+def clabel_sort_key(lab):
+    N, cl, num = split_cremona_label(lab)
+    return (int(N), class_to_int(cl), int(num))
