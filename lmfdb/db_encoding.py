@@ -159,7 +159,7 @@ class Json(pgJson):
                 return {'__IntDict__': 0, # encoding version
                         'data': [[int(k), cls.prep(v, escape_backslashes)] for k, v in obj.items()]}
             elif all(isinstance(k, basestring) for k in obj):
-                return {k:cls.prep(v, escape_backslashes) for k,v in obj.iteritems()}
+                return {k:cls.prep(v, escape_backslashes) for k,v in obj.items()}
             else:
                 raise TypeError("keys must be strings or integers")
         elif isinstance(obj, FreeModuleElement):

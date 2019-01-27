@@ -13,10 +13,10 @@ add --debug if you are developing (auto-restart, full stacktrace in browser, ...
 
 
 import logging
-import utils
+from .utils import LmfdbFormatter
 import os
 import time
-from base import app, set_logfocus, get_logfocus, _init
+from .base import app, set_logfocus, get_logfocus, _init
 from flask import g, render_template, request, make_response, redirect, url_for, current_app, abort
 import sage
 from lmfdb.config import Configuration
@@ -38,7 +38,7 @@ def setup_logging():
     root_logger.setLevel(logging.INFO)
     root_logger.name = "LMFDB"
 
-    formatter = logging.Formatter(utils.LmfdbFormatter.fmtString.split(r'[')[0])
+    formatter = logging.Formatter(LmfdbFormatter.fmtString.split(r'[')[0])
     ch = logging.StreamHandler()
     ch.setFormatter(formatter)
     root_logger.addHandler(ch)
@@ -233,7 +233,7 @@ def main():
     flask_options = Configuration().get_flask();
 
     if "profiler" in flask_options and flask_options["profiler"]:
-        print "Profiling!"
+        print( "Profiling!")
         from werkzeug.contrib.profiler import ProfilerMiddleware
         app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions = [30], sort_by=('cumulative','time','calls'))
         del flask_options["profiler"]

@@ -315,7 +315,7 @@ class WebObject(object):
 
         #print hasattr(self, 'level')
 
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             setattr(self, key, value)
 
         for p in self._properties:

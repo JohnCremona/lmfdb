@@ -14,7 +14,7 @@ class AbvarFqStats(UniqueRepresentation):
     def _counts(self):
         logger.debug("Looking up abelian variety counts")
         D = {}
-        for q, L in db.av_fqisog.stats.get_oldstat('counts').iteritems():
+        for q, L in db.av_fqisog.stats.get_oldstat('counts').items():
             D[int(q)] = L
         return D
 

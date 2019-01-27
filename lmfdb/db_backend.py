@@ -581,7 +581,7 @@ class PostgresTable(PostgresBase):
         else:
             strings = []
             values = []
-            for key, value in D.iteritems():
+            for key, value in D.items():
                 if not key:
                     raise ValueError("Error building query: empty key")
                 if key[0] == '$':
@@ -2379,7 +2379,7 @@ class PostgresTable(PostgresBase):
                 self.resort()
 
             # add an index for the default sort
-            if not any([index["columns"] == sort for index_name, index in self.list_indexes().iteritems()]):
+            if not any([index["columns"] == sort for index_name, index in self.list_indexes().items()]):
                 self.create_index(sort)
             self.log_db_change("set_sort", sort=sort)
 
@@ -3249,7 +3249,7 @@ class PostgresDatabase(PostgresBase):
         from lmfdb.config import Configuration
         options = Configuration().get_postgresql()
         # overrides the options passed as keyword arguments
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             options[key] = value
         self.fetch_userpassword(options)
         self._user = options['user']

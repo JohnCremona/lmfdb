@@ -518,7 +518,7 @@ def parse_galgrp(inp, query, qfield, use_bson=True):
                         query[tfield] = {'$in': gcsdict[n]}
                 else:
                     options = []
-                    for n, T in gcsdict.iteritems():
+                    for n, T in gcsdict.items():
                         if len(T) == 1:
                             options.append({nfield: n, tfield: T[0]})
                         else:

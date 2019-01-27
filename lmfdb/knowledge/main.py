@@ -423,14 +423,14 @@ def render(ID, footer=None, kwargs=None, raw=False):
         return errmsg if raw else make_response(errmsg)
 
     # logger.debug("kwargs: %s", request.args)
-    kwargs = kwargs or dict(((k, v) for k, v in request.args.iteritems()))
+    kwargs = kwargs or dict(((k, v) for k, v in request.args.items()))
     # logger.debug("kwargs: %s" , kwargs)
 
     # kw_params is inserted *verbatim* into the url_for(...) function inside the template
     # the idea is to pass the keyword arguments of the knowl further along the chain
     # of links, in this case the title and the permalink!
     # so, this kw_params should be plain python, e.g. "a=1, b='xyz'"
-    kw_params = ', '.join(('%s="%s"' % (k, v) for k, v in kwargs.iteritems()))
+    kw_params = ', '.join(('%s="%s"' % (k, v) for k, v in kwargs.items()))
     logger.debug("kw_params: %s" % kw_params)
 
     # this is a very simple template based on no other template to render one single Knowl

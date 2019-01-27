@@ -167,7 +167,7 @@ class WebqExp(WebPoly):
             QR = PowerSeriesRing(coeffs.values()[0].parent(),name='q',order='neglex')
             q = QR.gen()
             res = 0*q**0
-            for n, c in coeffs.iteritems():
+            for n, c in coeffs.items():
                 res += c*q**n
             res = res.add_bigoh(len(coeffs.keys())+1)
             self.set_value(res)
@@ -348,7 +348,7 @@ class WebCoeffs(WebProperty):
             if self._elt_type == 'nfabs':
                 emf_logger.debug("Converting from nfabs to poly!")
                 R = PolynomialRing(QQ,names=str(elt.parent().gen()))
-                self._value  = {k: R(str(v)) for k,v in self._value.iteritems()}
+                self._value  = {k: R(str(v)) for k,v in self._value.items()}
             elif self._elt_type == 'nfrel':
                 emf_logger.debug("Converting from nfrel to poly!")
                 if elt.parent().base_ring() == QQ:
@@ -359,7 +359,7 @@ class WebCoeffs(WebProperty):
                 #R = PolynomialRing(QQ, names=[str(self._value.values()[0].parent().base_ring().gen()),\
                 #                                  str(self._value.values()[0].parent().gen())])
                 self._elt_type = 'poly'
-                self._value = {k: T(str(v)) for k,v in self._value.iteritems()}
+                self._value = {k: T(str(v)) for k,v in self._value.items()}
 
     def value(self):
         return self
@@ -453,8 +453,8 @@ class WebCoeffs(WebProperty):
                 self.first_nonvanishing_coefficient_norm()
                 self.first_nonvanishing_coefficient_trace()
 
-    def iteritems(self):
-        return self._value.iteritems()
+    def items(self):
+        return self._value.items()
 
     def __iter__(self):
         return self._value.itervalues()
@@ -892,13 +892,13 @@ class WebNewForm(WebObject, CachedRepresentation):
             include_coeffs = self.complexity_of_first_nonvanishing_coefficients() <= default_max_height
             if include_coeffs:
                 self.q_expansion = self.q_expansion.truncate_powerseries(prec)
-                self._coefficients = {n:c for n,c in self._coefficients.iteritems() if n<prec}
+                self._coefficients = {n:c for n,c in self._coefficients.items() if n<prec}
             else:
                 self.q_expansion = self.q_expansion.truncate_powerseries(1)
                 self._coefficients = {}
                 self.prec = 0
                 self.coefficient_field = NumberField(self.absolute_polynomial, names=str(self.coefficient_field.gen()))
-            self._embeddings['values'] = {n:c for n,c in self._embeddings['values'].iteritems() if n<prec}
+            self._embeddings['values'] = {n:c for n,c in self._embeddings['values'].items() if n<prec}
             self._embeddings['prec'] = prec
             self.save_to_db()
 
