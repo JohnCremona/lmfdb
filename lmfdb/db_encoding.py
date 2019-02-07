@@ -21,6 +21,7 @@ from sage.rings.power_series_poly import PowerSeries_poly
 from sage.modules.free_module_element import vector, FreeModuleElement
 import json
 import datetime
+from six import string_types
 
 def setup_connection(conn):
     # We want to use unicode everywhere
@@ -44,7 +45,7 @@ class LmfdbRealLiteral(RealLiteral):
     A real number that prints using the string used to construct it.
     """
     def __init__(self, parent, x=0, base=10):
-        if not isinstance(x, basestring):
+        if not isinstance(x, string_types):
             x = str(x)
         RealLiteral.__init__(self, parent, x, base)
     def __repr__(self):
@@ -158,7 +159,7 @@ class Json(pgJson):
             if obj and all(isinstance(k, (int, Integer)) for k in obj):
                 return {'__IntDict__': 0, # encoding version
                         'data': [[int(k), cls.prep(v, escape_backslashes)] for k, v in obj.items()]}
-            elif all(isinstance(k, basestring) for k in obj):
+            elif all(isinstance(k, string_types) for k in obj):
                 return {k:cls.prep(v, escape_backslashes) for k,v in obj.items()}
             else:
                 raise TypeError("keys must be strings or integers")
@@ -221,7 +222,7 @@ class Json(pgJson):
                     'base': cls.prep(obj.base_ring(), escape_backslashes),
                     'prec': 'inf' if obj.prec() is infinity else int(obj.prec()),
                     'data': data}
-        elif escape_backslashes and isinstance(obj, basestring):
+        elif escape_backslashes and isinstance(obj, string_types):
             # For use in copy_dumps below
             return obj.replace('\\','\\\\\\\\').replace("\r", r"\r").replace("\n", r"\n").replace("\t", r"\t").replace('"',r'\"')
         elif obj is None:
@@ -235,7 +236,8 @@ class Json(pgJson):
         elif isinstance(obj, datetime.datetime):
             return {'__datetime__': 0,
                     'data': "%s"%(obj)}
-        elif isinstance(obj, (basestring, int, long, bool, float)):
+        #elif isinstance(obj, (string_types, int, long, bool, float)): # Python 2
+        elif isinstance(obj, (string_types, int, bool, float)):        # Python 3
             return obj
         else:
             raise ValueError("Unsupported type: %s"%(type(obj)))
@@ -318,16 +320,18 @@ def copy_dumps(inp, typ):
     - ``typ`` -- the Postgres type of the column in which this data is being stored.
     """
     if inp is None:
-        return ur'\N'
+        #return ur'\N' # Python 2
+        return r'\N'   # Python 3
     elif typ in ('text', 'char', 'varchar'):
-        if not isinstance(inp, basestring):
+        if not isinstance(inp, string_types):
             inp = str(inp)
         return inp.replace('\\','\\\\').replace('\r',r'\r').replace('\n',r'\n').replace('\t',r'\t').replace('"',r'\"')
     elif typ in ('json','jsonb'):
         return json.dumps(Json.prep(inp, escape_backslashes=True))
     elif isinstance(inp, RealLiteral):
         return inp.literal
-    elif isinstance(inp, (int, long, Integer, float)):
+    #elif isinstance(inp, (int, long, Integer, float)):  # Python 2
+    elif isinstance(inp, (int, Integer, float)):         # Python 3
         return str(inp)
     elif typ=='boolean':
         return 't' if inp else 'f'

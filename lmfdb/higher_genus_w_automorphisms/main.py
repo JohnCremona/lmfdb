@@ -796,7 +796,7 @@ def hgcwa_code_download(**args):
     start = time.time()
     lines = [(startstr + (signHfmt if dataz.get('signH') is not None else stdfmt).format(**dataz) + ((hypfmt.format(**dataz) if dataz['hyperelliptic'] else cyctrigfmt.format(**dataz) if dataz['cyclic_trigonal'] else nhypcycstr) if dataz.get('hyperelliptic') else '')) for dataz in data]
     code += '\n'.join(lines)
-    print "%s seconds for %d bytes" %(time.time() - start,len(code))
+    print("%s seconds for %d bytes" %(time.time() - start,len(code)))
     strIO = StringIO.StringIO()
     strIO.write(code)
     strIO.seek(0)
@@ -879,7 +879,7 @@ def hgcwa_code_download_search(res,download_type):
 
             code +='\n'
 
-    print "%s seconds for %d bytes" %(time.time() - start,len(code))
+    print("%s seconds for %d bytes" %(time.time() - start,len(code)))
     strIO = StringIO.StringIO()
     strIO.write(code)
     strIO.seek(0)

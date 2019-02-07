@@ -40,7 +40,7 @@ fi
 WHAT="$@"
 
 echo "Running pyflakes..."
-read PYFLAKES_ERRCNT < <(find . | grep "\.py$" | xargs pyflakes 2>&1 | tee /dev/stderr | grep "py:" -c)
+read PYFLAKES_ERRCNT < <(find . | grep "\.py$" | xargs pyflakes3 2>&1 | tee /dev/stderr | grep "py:" -c)
 if [[ $PYFLAKES_ERRCNT > 0 ]]; then
   echo "WARNING: pyflakes reported $PYFLAKES_ERRCNT error(s)"
 else

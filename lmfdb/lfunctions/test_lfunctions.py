@@ -329,7 +329,7 @@ class LfunctionTest(LmfdbTest):
 
     def test_LemfPlot(self):
         L = self.tc.get('/L/Plot/ModularForm/GL2/Q/holomorphic/14/6/1/a/0/')
-        print str(L)
+        print(str(L))
         assert 'OK' in str(L)
 
     def test_LartinPlot(self):

@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 
 from main import logger, FLASK_LOGIN_VERSION, FLASK_LOGIN_LIMIT
 from distutils.version import StrictVersion
+from six import string_types
 
 # Read about flask-login if you are unfamiliar with this UserMixin/Login
 from flask_login import UserMixin, AnonymousUserMixin
@@ -240,8 +241,8 @@ class LmfdbUser(UserMixin):
     properties = ('full_name', 'url', 'about')
 
     def __init__(self, uid):
-        if not isinstance(uid, basestring):
-            raise Exception("Username is not a basestring")
+        if not isinstance(uid, string_types):
+            raise Exception("Username is not a valid string")
 
         self._uid = uid
         self._authenticated = False
@@ -342,7 +343,7 @@ class LmfdbAnonymousUser(AnonymousUserMixin):
         return True
 
 if __name__ == "__main__":
-    print "Usage:"
-    print "add user"
-    print "remove user"
-    print "…"
+    print("Usage:")
+    print("add user")
+    print("remove user")
+    print("…")

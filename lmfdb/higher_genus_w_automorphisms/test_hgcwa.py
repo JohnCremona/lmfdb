@@ -6,8 +6,8 @@ class HigherGenusWithAutomorphismsTest(LmfdbTest):
     # All tests should pass
     #
     def test_url_label(self):
-	L = self.tc.get('/HigherGenus/C/Aut/2.24-8.0.2-4-6')
-	assert '[ 0; 2, 4, 6 ]' in L.data
+        L = self.tc.get('/HigherGenus/C/Aut/2.24-8.0.2-4-6')
+        assert '[ 0; 2, 4, 6 ]' in L.data
 
 
     def test_passport_label(self):
@@ -15,8 +15,8 @@ class HigherGenusWithAutomorphismsTest(LmfdbTest):
         assert '(1,8) (2,9) (3,10) (4,11) (5,12) (6,13) (7,14)'  in L.data
         
     def test_url_naturallabel(self):
-	L = self.tc.get('/HigherGenus/C/Aut/junk',follow_redirects=True)
-	assert 'No family with label' in L.data
+        L = self.tc.get('/HigherGenus/C/Aut/junk',follow_redirects=True)
+        assert 'No family with label' in L.data
     
 
     def test_search_genus_group(self):

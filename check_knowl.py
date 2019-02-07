@@ -8,15 +8,15 @@ from lmfdb.knowledge.knowl import knowldb
 from commands import getoutput
 
 cats = knowldb.get_categories()
-print("There are %s categories of knowl in the database" % len(cats))
+print("There are {} categories of knowl in the database".format(len(cats)))
 
 def check_knowls(cat='ec', verbose=False):
     cat_knowls = knowldb.search(category=cat)
     if verbose:
-        print("%s knowls in category %s" % (len(cat_knowls),cat))
+        print("{} knowls in category {}".format((len(cat_knowls),cat)))
     for k in cat_knowls:
         if verbose:
-            print("Checking knowl %s" % k['id'])
+            print("Checking knowl {}".format(k['id']))
         k = knowldb.get_knowl(k['id'])
         cont = k['content']
         all_content = cont
@@ -36,11 +36,11 @@ def check_knowls(cat='ec', verbose=False):
                 j = cont.find(qu,1)
                 ref = cont[1:j]
                 if verbose:
-                    print("..cites %s" % ref)
+                    print("..cites {}".format(ref))
                 cont = cont[j+1:]
                 the_ref = knowldb.get_knowl(ref)
                 if the_ref is None:
-                    print("Non-existing reference to %s in knowl %s" % (ref,k['id']))
+                    print("Non-existing reference to {} in knowl {}".format(ref,k['id']))
                     print("content of {} = ".format(k['id']))
                     print(all_content)
                     return False
@@ -95,7 +95,7 @@ def find_knowl_links(id, base=None, all=True, verbose=False):
     for L in getoutput('grep -r "{}" {}'.format(id, base)).splitlines():
         found = True
         if verbose:
-            print L
+            print(L)
         if not all or not verbose:
             return True
     return found
