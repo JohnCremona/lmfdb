@@ -1269,9 +1269,11 @@ def fix_quad_twist(c):
 
 # Function to read all the data before running the rewrite:
 
-def read_opt_man_data():
+def read_opt_man_data(N1=0, N2=50):
+    # reads data files with names as constructed below: each value of
+    # N represents the range N*10^4..(N+1)*10^4
     opt_man_dict = {}
-    for N in range(50):
+    for N in range(N1,N2):
         fname = "/scratch/home/jcremona/ecdata/opt_man/opt_man.{}0000-{}9999".format(N,N)
         print("Reading from {}".format(fname))
         for line in open(fname):
