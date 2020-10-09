@@ -510,6 +510,7 @@ class WebEC(object):
             tor_gro = None
         if tor_gro is None:
             self.torsion_growth_data_exists = False
+            self.ntg = 0
             return
         self.torsion_growth_data_exists = True
         self.tg = tg = {}
@@ -550,6 +551,8 @@ class WebEC(object):
                 tg1['m'] = len([x for x in tgextra if x['d']==d])
                 lastd = d
 
+        self.ntg = len(self.tg)
+
         ## Hard-code this for now.  While something like
         ## max(db.ec_curves.search({},projection='tor_degs')) might
         ## work, since 'tor_degs' is in the extra table it is very
@@ -557,7 +560,8 @@ class WebEC(object):
         ## is in the ec-curve template where it says "The number
         ## fields ... of degree up to {{data.tg.maxd}} such that...".
         
-        tg['maxd'] = 7
+        tg['degrees'] = [2,3,4,5,6,7,8,9,10, 12, 14,15,16, 18, 20,21] # 11, 13, 17, 19 absent!
+        tg['maxd'] = max(tg['degrees'])
 
     def code(self):
         if self._code is None:

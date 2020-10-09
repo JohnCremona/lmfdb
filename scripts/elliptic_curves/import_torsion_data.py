@@ -21,7 +21,7 @@ data for higher degrees is uploaded that will need to be changed.
 """
 from __future__ import print_function
 import os
-from sage.all import ZZ, PolynomialRing, QQ, NumberField
+from sage.all import ZZ, PolynomialRing, QQ, NumberField, Set, copy
 
 from lmfdb import db
 
@@ -84,271 +84,100 @@ def get_degree(label_or_coeffs):
     else:
         return label_or_coeffs.count(',')
 
-def onefieldtor(dat, degree):
-    """Input: string e.g. [2,6][4,-1,1], where the first list is a
-    torsion structure and the second is a list of polynomial
-    coefficients.
 
-    Output: a list [F,tor] where F is the field defined by the
-    polynomial coefficients (as a label if in the database or as a
-    string), and tor is the torsion structure string.
+def read_line(line, debug=0):
+    r"""Parses one line from input file.  Returns a label and a dict with
+    keys tor_degs, tor_fields, tor_gro.
 
-    """
-    tor, pol = dat.split("][")
-    tor = tor[1:]
-    pol = pol[:-1]
-    d = get_degree(pol)
-    if d != int(degree):
-        return None
-    F = find_field(pol)
-    return [F,tor]
-
-def onefieldxtor(dat):
-    """Input: string e.g. [2,6]:4,-1,1, where the first list is a torsion
-    structure and the second is a list of polynomial coefficients, or
-    [2,6]:2.2.5.1 with the second part an LMFDB field label.
-
-    Output: as for onefieldtor()
-
-    """
-    T, F = dat.split(":")
-    T = T[1:-1]
-    return [F,T]
-
-def read_line(line, degree, debug=0):
-    r""" Parses one line from input file.  Returns a dict containing ...
-
-    Sample line: 14a1 [6] [3,6][1,1,1] [2,6][2,-1,1]
+    Sample line: 14a1 [3,6][1,1,1] [2,6][2,-1,1]
 
     Fields: label (single field, Cremona label)
-            T     (torsion over Q, [], or [n] with n>1 or [m,n] with 1<m|n)
 
-            0 or more items of the form TF (with no space between)
-            with T as above and F a list of integers of length d>=2
-            containing the coefficients of a monic polynomial of
-            degree d defining a number field.
+            1 or more items of the form TF (with no space between)
+            with T =[n] or [m,n] and F a list of integers of length
+            d+1>=3 containing the coefficients of a monic polynomial
+            of degree d defining a number field (constant coeff
+            first).
 
     Note: in each file d is fixed and contained in the filename
     (e.g. growth2.000000-399999) but can be recovered from any line
-    with >2 fields from the length of the coefficient lists.
+    from the length of the coefficient lists.
 
     """
-    if debug: print("Parsing input line {} in degree {}".format(line, degree))
+    if debug: print("Parsing input line {}".format(line))
     fields = line.split()
-    clabel = fields[0]
-    # The data file contains the torsion over Q, but we do not use it
-    # Qt = str_to_list(fields[1]) # string representing list of ints of length <=2
+    label = fields[0]
+    # print(fields[1:])
+    # print([s[1:-1].split("][") for s in fields[1:]])
+    tordata = [[F,T] for T,F in [s[1:-1].split("][") for s in fields[1:]]]
+    tor_gro = dict(tordata)
+    tor_fields = [F for F,T in tordata]
+    tor_degs = sorted(list(Set([F.count(",") for F in tor_fields])))
+    data = {'label': label,
+            'tor_degs': tor_degs,
+            'tor_fields': tor_fields,
+            'tor_gro': tor_gro,
+            }
+    if debug: print("label {}, data {}".format(label,data))
+    return label, data
 
-    tordata = [onefieldtor(dat, degree) for dat in fields[2:]]
-    if debug:
-        print("before degree check, tordata = {}".format(tordata))
-    tordata = [t for t in tordata if t is not None]
-    if debug:
-        print("after  degree check, tordata = {}".format(tordata))
-    data = dict(tordata)
+all_degrees = [2,3,4,5,6,7,8,9,10,12,14,15,16,18,20,21]
+all_ranges = ["0-9999"] + ["{}0000-{}9999".format(k,k) for k in range(1,40)]
 
-    if debug: print("label {}, data {}".format(clabel,data))
-    return clabel, data
+HOME = os.getenv("HOME")
+ECDATA_DIR = os.path.join(HOME, "ecdata")
+GROWTH_DIR = os.path.join(ECDATA_DIR, "growth")
 
-
-def read_xline(line, degree, debug=0):
-    r""" Parses one line from input file.  Returns a dict containing ...
-
-    Sample line: 14a1 [3,6]:1,1,1 [2,6]:2.2.5.1
-
-    Fields: label (single field, Cremona label)
-
-            0 or more items of the form T:F (with no space between)
-            with T as above and F either a list of integers of length d+1>=3
-            containing the coefficients of a monic polynomial of
-            degree d defining a number field, or an LMFDB field label e.g. 2.2.5.1
-
-    Note: in each file d is fixed and contained in the filename
-    (e.g. growth2x.000000-399999) but can be recovered from any line
-    with >1 fields from the field data.
-
-    """
-    if debug: print("Parsing input line {} in degree {}".format(line, degree))
-    fields = line.split()
-    clabel = fields[0]
-
-    tordata = [onefieldxtor(dat) for dat in fields[1:]]
-    data = dict(tordata)
-
-    if debug: print("label {}, data {}".format(clabel,data))
-    return clabel, data
-
-# To run this go into the top-level lmfdb directory, run sage and give
-# the command
-# %runfile lmfdb/elliptic_curves/import_torsion_data.py
-#
-# and then run the following function.
-# Unless you set test=False it will not actually upload any data.
-
-def upload_to_db(base_path, f, test=True):
-    f = os.path.join(base_path, f)
-    h = open(f)
-    print("opened %s" % f)
-
-    data_to_insert = {}  # will hold all the data to be inserted
-    count = 0
-
-    for line in h.readlines():
-        count += 1
-        if count%1000==0:
-            print("read %s lines" % count)
-        label, data = read_line(line,0)
-        #if data['torsion_growth']label]
-        data_to_insert[label] = data
-
-    print("finished reading %s lines from file" % count)
-    vals = data_to_insert.values()
-
-    print("Number of records to insert = %s" % len(vals))
-    count = 0
-
-    if test:
-        print("Not inserting any records as in test mode")
-        print("First record is %s" % vals[0])
-        return
-
-    for val in vals:
-        #print val
-        count += 1
-        if not test:
-            curves.update_one({'label': val['label']}, {"$set": val}, upsert=True)
-        if count % 1000 == 0:
-            print("inserted %s items" % count)
-
-def add_iw_data1(C, tor_data):
-    """Add fields to a single curve record in the db.
-    """
-    C.update(tor_data[C['label']])
-    return C
-
-def read_torsion_growth_data(base_path, filename, degree, maxlines=0):
-    f = os.path.join(base_path, filename)
-    h = open(f)
-    print("opened %s" % f)
-
+def read_torsion_growth_data(base_path=GROWTH_DIR, degrees=all_degrees, ranges=all_ranges):
     tor_data = {}
     count = 0
 
-    for line in h.readlines():
-        count += 1
-        if count%10000==0:
-            print("read %s lines" % count)
-        if maxlines and count>maxlines:
-            break
-        label, data = read_line(line,degree,0)
-        tor_data[label] = data
+    def merge_data(d1, d2):
+        # d1 and d2 are both dicts with keys tor_degs, tor_fields,
+        # tor_gro return a merged dict, concatenating the tor_degs and
+        # tor_fields lists and merging the tor_gro dicts
+        #
+        tor_gro = copy(d1['tor_gro'])
+        tor_gro.update(d2['tor_gro'])
+        return {'tor_degs': d1['tor_degs']+d2['tor_degs'],
+                'tor_fields': d1['tor_fields']+d2['tor_fields'],
+                'tor_gro': tor_gro,
+        }
+
+             
+    for d in degrees:
+        for r in ranges:
+            filename = os.path.join(base_path, str(d), "growth{}.{}".format(d,r))   
+            with open(filename) as h:
+                print("opened %s" % filename)
+                for line in h:
+                    count += 1
+                    if count%10000==0:
+                        print("read %s lines" % count)
+                    label, data = read_line(line)
+                    if label in tor_data:
+                        tor_data[label] = merge_data(tor_data[label], data)
+                    else:
+                        tor_data[label] = data
 
     print("finished reading {} lines from file".format(count))
     return tor_data
 
-def read_xtorsion_growth_data(base_path, filename, degree, maxlines=0):
-    f = os.path.join(base_path, filename)
-    h = open(f)
-    print("opened %s" % f)
-
-    tor_data = {}
-    count = 0
-
-    for line in h.readlines():
-        count += 1
-        if count%10000==0:
-            print("read %s lines" % count)
-        if maxlines and count>maxlines:
-            break
-        label, data = read_xline(line,degree,0)
-        tor_data[label] = data
-
-    print("finished reading {} lines from file".format(count))
-    return tor_data
-
-# for use with the rewrite method. We need to give it a function
-# taking one record (dictionary) and returning a possible changed
-# version of it.
-
-#  The following returns such a function, only applying it to curves with conductors in a given range
-
-def tor_data_update(N1, N2, base_path, maxlines=0):
-    tordata = {}
-    degrees = [str(d) for d in range(2,8)]
-    for d in degrees:
-        f = "growth{}.000000-399999".format(d)
-        tordata[d] = read_torsion_growth_data(base_path, f, d, maxlines)
-    def update_function(C):
-        N = int(C['conductor'])
-        if N1 <= N <= N2:
-            label = C['label']
-            tdeg = [d for d in degrees if tordata[d][label]]
-            C['tor_degs'] = [int(d) for d in tdeg]
-            tor_gro = {}
-            for d in tdeg:
-                td = tordata[d][label]
-                td = dict([(F.replace(".",":"),T) for F,T in td.items()])
-                tor_gro.update(td)
-            C['tor_gro'] = tor_gro
-            C['tor_fields'] = [F.replace(":",".") for F in tor_gro.keys()]
-        return C
-    return tordata, update_function
-
-def tor_xdata_update(N1, N2, base_path, degrees=None, overwrite=False, maxlines=0):
-    tordata = {}
-    if degrees is None:
-        degrees = [str(d) for d in range(2,8)]
-    else:
-        degrees = [str(d) for d in degrees]
-    for d in degrees:
-        f = "growth{}x.000000-399999".format(d)
-        tordata[d] = read_xtorsion_growth_data(base_path, f, d, maxlines)
-    def update_function(C):
-        N = int(C['conductor'])
-        if N1 <= N <= N2:
-            label = C['label']
-
-            tdeg = [d for d in degrees if tordata[d][label]]
-            td = [int(d) for d in tdeg]
-            if 'tor_degs' in C and not overwrite:
-                C['tor_degs'].append(td)
-            else:
-                C['tor_degs'] = td
-
-            tor_gro = {}
-            for d in tdeg:
-                td = tordata[d][label]
-                td = dict([(F.replace(".",":"),T) for F,T in td.items()])
-                tor_gro.update(td)
-            if 'tor_gro' in C and not overwrite:
-                C['tor_gro'].update(tor_gro)
-            else:
-                C['tor_gro'] = tor_gro
-
-            tf = [F.replace(":",".") for F in tor_gro.keys()]
-            if 'tor_fields' in C and not overwrite:
-                C['tor_fields'].append(tf)
-            else:
-                C['tor_fields'] = tf
-        return C
-    return tordata, update_function
-
-
-def write_tordata(tordata, base_path='', degrees = None, maxlines=0):
-    if degrees is None:
-        degrees = [str(d) for d in range(2,8)]
-    else:
-        degrees = [str(d) for d in degrees]
-
-    for d in degrees:
-        f = os.path.join(base_path, "growth{}x.000000-399999".format(d))
-        h = open(f, mode='w')
+def write_tordata(tordata, base_path='', maxlines=0):
+    f = os.path.join(base_path, "growth_table")
+    with open(f,'w') as h:
         print("opened {}".format(f))
-        td = tordata[d]
+
+        # print header
+        h.write("label|tor_degs|tor_fields|tor_gro\n")
+        h.write("text|jsonb|jsonb|jsonb\n\n")
+
         count = 0
-        for lab, dat in td.items():
-            h.write(" ".join([lab]+["[{}]:{}".format(T,F.replace(":",".")) for F,T in dat.items()]) + "\n")
+        for lab, dat in tordata.items():
+            tor_degs = str(dat['tor_degs']).replace(" ","")
+            tor_fields = str(dat['tor_fields']).replace("'",'"')
+            tor_gro = str(dat['tor_gro']).replace("'",'"')
+            h.write("|".join([lab, tor_degs, tor_fields, tor_gro]) + "\n")
             count +=1
             if count==maxlines:
                 break
-        h.close()
