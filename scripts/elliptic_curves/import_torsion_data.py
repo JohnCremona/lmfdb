@@ -163,21 +163,20 @@ def read_torsion_growth_data(base_path=GROWTH_DIR, degrees=all_degrees, ranges=a
     print("finished reading {} lines from file".format(count))
     return tor_data
 
-def write_tordata(tordata, base_path='', maxlines=0):
-    f = os.path.join(base_path, "growth_table")
+def write_torsion_growth_data(tordata, base_path='', filename="growth_table"):
+    f = os.path.join(base_path, filename)
     with open(f,'w') as h:
         print("opened {}".format(f))
 
         # print header
-        h.write("label|tor_degs|tor_fields|tor_gro\n")
-        h.write("text|jsonb|jsonb|jsonb\n\n")
+        h.write("label|torsion_growth\n")
+        h.write("text|jsonb\n\n")
 
         count = 0
         for lab, dat in tordata.items():
-            tor_degs = str(dat['tor_degs']).replace(" ","")
-            tor_fields = str(dat['tor_fields']).replace("'",'"')
             tor_gro = str(dat['tor_gro']).replace("'",'"')
-            h.write("|".join([lab, tor_degs, tor_fields, tor_gro]) + "\n")
+            h.write("|".join([lab, tor_gro]) + "\n")
             count +=1
-            if count==maxlines:
-                break
+            if count%1000==0:
+                print("{} lines written so far".format(count))
+    print("{} lines written to {}".format(count, f))

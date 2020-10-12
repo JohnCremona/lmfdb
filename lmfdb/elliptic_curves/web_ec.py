@@ -4,11 +4,11 @@ import os
 import yaml
 from flask import url_for
 from lmfdb import db
-from lmfdb.utils import web_latex, encode_plot, coeff_to_poly
+from lmfdb.utils import web_latex, encode_plot
 from lmfdb.logger import make_logger
 from lmfdb.sato_tate_groups.main import st_link_by_name
 from lmfdb.number_fields.number_field import field_pretty
-from lmfdb.number_fields.web_number_field import nf_display_knowl, string2list
+from lmfdb.number_fields.web_number_field import nf_display_knowl, formatfield
 
 from sage.all import EllipticCurve, latex, ZZ, QQ, RR, prod, Factorization, PowerSeriesRing, prime_range
 
@@ -505,10 +505,10 @@ class WebEC(object):
 
     def make_torsion_growth(self):
         try:
-            tor_gro = self.tor_gro
+            torsion_growth = self.tor_gro
         except AttributeError: # for curves with norsion growth data
-            tor_gro = None
-        if tor_gro is None:
+            torsion_growth = None
+        if torsion_growth is None:
             self.torsion_growth_data_exists = False
             self.ntg = 0
             return
@@ -518,7 +518,7 @@ class WebEC(object):
         # find all base-changes of this curve in the database, if any
         bcs = list(db.ec_nfcurves.search({'base_change': {'$contains': [self.lmfdb_label]}}, projection='label'))
         bcfs = [lab.split("-")[0] for lab in bcs]
-        for F, T in tor_gro.items():
+        for F, T in torsion_growth.items():
             tg1 = {}
             tg1['bc'] = "Not in database"
             # mongo did not allow "." in a dict key so we changed (e.g.) '3.1.44.1' to '3:1:44:1'
@@ -534,7 +534,7 @@ class WebEC(object):
                     tg1['bc'] = bcc[0]
                     tg1['bc_url'] = url_for('ecnf.show_ecnf', nf=F, conductor_label=NN, class_label=I, number=C)
             else:
-                field_data = web_latex(coeff_to_poly(string2list(F)))
+                field_data = formatfield(F)#web_latex(coeff_to_poly(string2list(F)))
                 deg = F.count(",")
             tg1['d'] = deg
             tg1['f'] = field_data
