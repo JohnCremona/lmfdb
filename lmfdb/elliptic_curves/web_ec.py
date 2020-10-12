@@ -514,6 +514,7 @@ class WebEC(object):
             return
         self.torsion_growth_data_exists = True
         self.tg = tg = {}
+        tg['missing_field'] = False
         tg['data'] = tgextra = []
         # find all base-changes of this curve in the database, if any
         bcs = list(db.ec_nfcurves.search({'base_change': {'$contains': [self.lmfdb_label]}}, projection='label'))
@@ -534,8 +535,10 @@ class WebEC(object):
                     tg1['bc'] = bcc[0]
                     tg1['bc_url'] = url_for('ecnf.show_ecnf', nf=F, conductor_label=NN, class_label=I, number=C)
             else:
-                field_data = formatfield(F)#web_latex(coeff_to_poly(string2list(F)))
+                field_data = formatfield(F)
                 deg = F.count(",")
+                if 'missing' in field_data:
+                    tg['missing_field'] = True
             tg1['d'] = deg
             tg1['f'] = field_data
             tg1['t'] = r'\(' + r' \times '.join([r'\Z/{}\Z'.format(n) for n in T.split(",")]) + r'\)'
@@ -560,8 +563,7 @@ class WebEC(object):
         ## is in the ec-curve template where it says "The number
         ## fields ... of degree up to {{data.tg.maxd}} such that...".
         
-        tg['degrees'] = [2,3,4,5,6,7,8,9,10, 12, 14,15,16, 18, 20,21] # 11, 13, 17, 19 absent!
-        tg['maxd'] = max(tg['degrees'])
+        tg['maxd'] = 23
 
     def code(self):
         if self._code is None:

@@ -643,8 +643,9 @@ are as follows:
 </p>
 <p>
 We only show fields where the torsion growth is {{KNOWL('ec.q.torsion_growth', title='primitive')}}.
-For each field $K$ we either show its label, or a defining
-polynomial when $K$ is not in the database.
+{% if data.tg.missing_field %}
+For fields not in the database we show the degree, which links to a defining polynomial.
+{% endif %}
 </p>
 {% endif %}
 
