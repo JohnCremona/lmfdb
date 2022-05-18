@@ -38,7 +38,7 @@ def pluralize(n, noun):
 class TooManyFailures(AssertionError):
     pass
 
-class speed_decorator(object):
+class speed_decorator():
     """
     Transparently wraps a function, so that functions can be classified by "isinstance".  Allow keyword arguments
     """
@@ -113,7 +113,7 @@ class overall_long(one_query):
     shortname = "long"
     timeout = 3600
 
-class TableChecker(object):
+class TableChecker():
     label_col = 'label' # default
 
     @staticmethod
@@ -149,11 +149,13 @@ class TableChecker(object):
         return MethodType(check, self), check.__class__
 
     def get_total(self, check, ratio):
-        if ratio is None: ratio=check.ratio
+        if ratio is None:
+            ratio = check.ratio
         return int(self.table.count(check.constraint) * ratio)
 
     def get_iter(self, check, label, ratio):
-        if ratio is None: ratio = check.ratio
+        if ratio is None:
+            ratio = check.ratio
         projection = check.projection
         if self.label_col not in projection:
             projection = [self.label_col] + projection

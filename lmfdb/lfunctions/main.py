@@ -285,13 +285,13 @@ def common_parse(info, query):
     if 'instance_types' in query:
         for s in query['instance_types']['$contains']:
             if s in ['DIR', 'Artin', 'ECQ', 'ECNF', 'G2Q', 'CMF', 'HMF', 'BMF', 'MaassGL3', 'MaassGL4', 'MaassGSp4', 'NF']:
-                 query['is_instance_' + s] = 'true'
+                query['is_instance_' + s] = 'true'
         del query['instance_types']
     parse_not_element_of(info,query,'origin_exclude',qfield='instance_types',parse_singleton=lambda x:x)
     if 'instance_types' in query:
         for s in query['instance_types']['$notcontains']:
             if s in ['DIR', 'Artin', 'ECQ', 'ECNF', 'G2Q', 'CMF', 'HMF', 'BMF', 'MaassGL3', 'MaassGL4', 'MaassGSp4', 'NF']:
-                 query['is_instance_' + s] = 'false'
+                query['is_instance_' + s] = 'false'
         del query['instance_types']
     info['analytic_conductor'] = parse_floats(info,query,'analytic_conductor')
     info['root_analytic_conductor'] = parse_floats(info,query,'root_analytic_conductor')
@@ -351,6 +351,7 @@ def l_function_search(info, query):
         info["title"] = "Rational L-function search results"
     common_parse(info, query)
 
+
 @search_wrap(template="LfunctionTraceSearchResults.html",
              table=db.lfunc_search,
              title="L-function trace search",
@@ -359,11 +360,11 @@ def l_function_search(info, query):
              postprocess=process_trace,
              learnmore=learnmore_list,
              bread=lambda: get_bread(breads=[("Search results", " ")]))
-
 def trace_search(info, query):
     set_Trn(info, query)
     common_parse(info, query)
     process_an_constraints(info, query, qfield='dirichlet_coefficients', nshift=lambda n: n+1)
+
 
 @search_parser
 def parse_euler(inp, query, qfield, p=None, d=None):
@@ -424,6 +425,12 @@ class LFunctionSearchArray(SearchArray):
     jump_egspan="e.g. 2-1-1.1-c11-0-0 or 4-1-1.1-r0e4-c4.72c12.47-0"
     jump_knowl="lfunction.search_input"
     jump_prompt="Label"
+    null_column_explanations = { # No need to display warnings for these
+        'dirichlet_coefficients': False,
+        'euler_factors': False,
+    }
+    for p in prime_range(100):
+        null_column_explanations[f'euler{p}'] = False
     def __init__(self, force_rational=False):
         z1 = TextBox(
             name="z1",
@@ -1162,6 +1169,8 @@ def render_single_Lfunction(Lclass, args, request):
             return render_lfunction_exception(err)
 
     info = initLfunction(L, temp_args, request)
+    if info['label']=='1-1-1.1-r0-0-0':
+        info['learnmore'].append(("$\zeta$ zeros", url_for("zeta zeros.zetazeros")))
     return render_template('Lfunction.html', **info)
 
 def render_lfunction_exception(err):
@@ -1561,6 +1570,8 @@ def download(label, L=None): # the wrapper populates the L
 
 @l_function_page.route("/data/<label>")
 def lfunc_data(label):
+    if not LFUNC_LABEL_RE.fullmatch(label):
+        return abort(404, f"Invalid label {label}")
     title = f"Lfunction data - {label}"
     bread = get_bread([(label, url_for_lfunction(label)), ("Data", " ")])
     return datapage(label, ["lfunc_lfunctions", "lfunc_search", "lfunc_instances"], title=title, bread=bread)

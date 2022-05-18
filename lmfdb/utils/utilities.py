@@ -61,9 +61,11 @@ def integer_squarefree_part(n):
     """ returns the squarefree part of the integer n (uses factor rather than calling pari like sage 9.3+ does) """
     return sign(n)*prod([p**(e%2) for p, e in ZZ(n).factor()])
 
+
 def integer_is_squarefree(n):
     """ returns the squarefree part of the integer n (uses factor rather than calling pari like sage 9.3+ does) """
-    return all([e == 1 for _, e in ZZ(n).factor()])
+    return all(e == 1 for _, e in ZZ(n).factor())
+
 
 def list_to_factored_poly_otherorder(s, galois=False, vari='T', p=None):
     """
@@ -420,7 +422,7 @@ def display_float(x, digits, method = "truncate",
             if len(s) < digits + 2: # 2 = '/' + '-'
                 return str(x)
         k = round_to_half_int(x)
-        if k == x :
+        if k == x:
             k2 = None
             try:
                 k2 = ZZ(2*x)
@@ -553,16 +555,18 @@ def splitcoeff(coeff):
 #  display and formatting utilities
 ################################################################################
 
-def comma(x):
+def comma(x, sep=","):
     """
     Input is an integer. Output is a string of that integer with commas.
     CAUTION: this misbehaves if the input is not an integer.
+
+    sep is an optional separator other than a comma
 
     Example:
     >>> comma("12345")
     '12,345'
     """
-    return x < 1000 and str(x) or ('%s,%03d' % (comma(x // 1000), (x % 1000)))
+    return x < 1000 and str(x) or ('%s%s%03d' % (comma(x // 1000, sep), sep, (x % 1000)))
 
 def latex_comma(x):
     """
@@ -662,7 +666,7 @@ def code_snippet_knowl(D, full=True):
 #  pagination utilities
 ################################################################################
 
-class ValueSaver(object):
+class ValueSaver():
     """
     Takes a generator and saves values as they are generated so that values can be retrieved multiple times.
     """
@@ -687,7 +691,7 @@ class ValueSaver(object):
     def __len__(self):
         raise TypeError("Unknown length")
 
-class Pagination(object):
+class Pagination():
     """
     INPUT:
 
@@ -713,7 +717,7 @@ class Pagination(object):
 
     @cached_property
     def entries(self):
-        return self.source[self.start : self.start+self.per_page]
+        return self.source[self.start: self.start+self.per_page]
 
     @cached_property
     def has_next(self):
@@ -780,12 +784,12 @@ def flash_info(errmsg, *args):
 ################################################################################
 
 # LinkedList is used in Ajax below
-class LinkedList(object):
+class LinkedList():
     __slots__ = ('value', 'next', 'timestamp')
 
-    def __init__(self, value, next):
+    def __init__(self, value, nxt):
         self.value = value
-        self.next = next
+        self.next = nxt
         self.timestamp = time.time()
 
     def append(self, value):
@@ -793,7 +797,7 @@ class LinkedList(object):
         return self.next
 
 
-class AjaxPool(object):
+class AjaxPool():
     def __init__(self, size=1e4, expiration=3600):
         self._size = size
         self._key_list = self._head = LinkedList(None, None)
@@ -936,8 +940,3 @@ def datetime_to_timestamp_in_ms(dt):
 
 def timestamp_in_ms_to_datetime(ts):
     return datetime.datetime.utcfromtimestamp(float(int(ts)/1000000.0))
-
-
-
-
-

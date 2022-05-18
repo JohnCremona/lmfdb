@@ -379,6 +379,8 @@ def show_ecnf(nf, conductor_label, class_label, number):
 
 @ecnf_page.route("/data/<label>")
 def ecnf_data(label):
+    if not LABEL_RE.fullmatch(label):
+        return abort(404, f"Invalid label {label}")
     bread = get_bread((label, url_for_label(label)), ("Data", " "))
     title = f"Elliptic curve data - {label}"
     return datapage(label, "ec_nfcurves", title=title, bread=bread)
@@ -493,6 +495,8 @@ ecnf_columns = SearchColumns([
     MathCol("class_size", "ec.isogeny", "Class size", short_title="isogeny class size"),
     MathCol("class_deg", "ec.isogeny", "Class degree", short_title="isogeny class degree"),
     ProcessedCol("field_label", "nf", "Base field", lambda field: nf_display_knowl(field, field_pretty(field)), default=True, align="center"),
+    MathCol("degree", "nf.degree", "Field degree", short_title="base field degree", align="center"),
+    MathCol("signature", "nf.signature", "Field signature", short_title="base field signature", align="center"),
     SearchCol("conductor_label", "ec.conductor_label", "Conductor", align="center"),
     ProcessedCol("conductor_norm", "ec.conductor", "Conductor norm", lambda v: web_latex_factored_integer(ZZ(v)), default=True, align="center"),
     ProcessedCol("normdisc", "ec.discriminant", "Discriminant norm", lambda v: web_latex_factored_integer(ZZ(v)), align="center"),
@@ -636,12 +640,12 @@ def elliptic_curve_search(info, query):
             raise ValueError(err)
         if modell_labels:
             query['galois_images'] = { '$contains': modell_labels }
-        if not 'cm' in query:
+        if 'cm' not in query:
             query['cm'] = 0
             info['cm'] = "noCM"
         if query['cm']:
             # try to help the user out if they specify the normalizer of a Cartan in the CM case (these are either maximal or impossible
-            if any([a.endswith("Nn") for a in modell_labels]) or any([a.endswith("Ns") for a in modell_labels]):
+            if any(a.endswith("Nn") for a in modell_labels) or any(a.endswith("Ns") for a in modell_labels):
                 err = "To search for maximal images, exclude non-maximal primes"
                 flash_error(err)
                 raise ValueError(err)
@@ -654,7 +658,7 @@ def elliptic_curve_search(info, query):
                     flash_error(err)
                     raise ValueError(err)
                 else:
-                    modell_labels = [a for a in modell_labels if not a in max_labels]
+                    modell_labels = [a for a in modell_labels if a not in max_labels]
                     max_primes = [modell_image_label_regex.match(a)[1] for a in max_labels]
                     if info.get('nonmax_primes'):
                         max_primes += [l.strip() for l in info['nonmax_primes'].split(',') if not l.strip() in max_primes]
@@ -669,7 +673,12 @@ def elliptic_curve_search(info, query):
     parse_primes(info, query, 'conductor_norm_factors', name='bad primes',
              qfield='conductor_norm_factors',mode=info.get('bad_quantifier'))
     info['field_pretty'] = field_pretty
-    parse_ints(info,query,'bf_deg',name='Base field degree',qfield='degree')
+    if info.get('deg_sig'):
+        sig = ast.literal_eval(info['deg_sig'])
+        if len(sig) == 1:
+            query['degree'] = sig[0]
+        else:
+            query['signature'] = sig
 
 @ecnf_page.route("/browse/")
 def browse():
@@ -907,11 +916,12 @@ class ECNFSearchArray(SearchArray):
             label="Torsion order",
             knowl="ec.torsion_order",
             example="2")
-        bf_deg = SelectBox(
-            name="bf_deg",
-            label="Base field degree",
-            knowl="nf.degree",
-            options=[("",""),("2", "2"),("3", "3"),("4", "4"),("5", "5"),("6", "6")]
+        deg_sig = SelectBox(
+            name="deg_sig",
+            label="Base field degree/signature",
+            knowl="nf.signature",
+            options=[("",""),("[2]", "quadratic"),("[3]", "cubic"),("[4]", "quartic"),("[5]", "quintic"),("[6]", "sextic"),
+                     ("[2,0]", "real quadratic"), ("[0,1]", "imaginary quadratic"), ("[3,0]", "real cubic"), ("[1,1]", "mixed cubic") ]
             )
 
         tor_opts = ([("", ""),
@@ -985,7 +995,7 @@ class ECNFSearchArray(SearchArray):
         count = CountBox()
 
         self.browse_array = [
-            [field, bf_deg],
+            [field, deg_sig],
             [conductor_norm, bad_primes],
             [rank, Qcurves],
             [torsion, torsion_structure],
@@ -1000,7 +1010,7 @@ class ECNFSearchArray(SearchArray):
 
         self.refine_array = [
             [field, conductor_norm, rank, torsion, cm_disc],
-            [bf_deg, bad_primes, Qcurves, torsion_structure, include_cm],
+            [deg_sig, bad_primes, Qcurves, torsion_structure, include_cm],
             [sha, isodeg, class_size, reduction, galois_image],
             [jinv, regulator, one, class_deg, nonmax_primes],
             ]

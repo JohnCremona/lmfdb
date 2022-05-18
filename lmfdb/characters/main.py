@@ -7,7 +7,7 @@ from flask import render_template, url_for, request, redirect, abort
 from sage.all import gcd, euler_phi, PolynomialRing, QQ
 from lmfdb.utils import (
     to_dict, flash_error, SearchArray, YesNoBox, display_knowl, ParityBox,
-    TextBox, CountBox, parse_bool, parse_ints, search_wrap, raw_typeset,
+    TextBox, CountBox, parse_bool, parse_ints, search_wrap, raw_typeset_poly,
     StatsDisplay, totaler, proportioners, comma, flash_warning)
 from lmfdb.utils.interesting import interesting_knowls
 from lmfdb.utils.search_columns import SearchColumns, MathCol, LinkCol, CheckCol, ProcessedCol, MultiProcessedCol
@@ -523,6 +523,8 @@ def dirchar_data(label):
         tail = [(label, url_for(".render_Dirichletwebpage", modulus=modulus, orbit_label=orbit_label)),
                 ("Data", " ")]
         return datapage(label, "char_dir_orbits", title=title, bread=bread(tail))
+    else:
+        return abort(404, f"Invalid label {label}")
 
 def _dir_knowl_data(label, orbit=False):
     modulus, number = label.split('.')
@@ -679,7 +681,7 @@ def dirichlet_group_table(**args):
     if info['poly'] != '???':
         try:
             info['poly'] = PolynomialRing(QQ, 'x')(info['poly'])
-            info['poly'] = raw_typeset(info['poly'])
+            info['poly'] = raw_typeset_poly(info['poly'])
         except Exception:
             pass
     return render_template("CharacterGroupTable.html", **info)
@@ -688,7 +690,7 @@ def dirichlet_group_table(**args):
 def get_group_table(modulus, char_list):
     # Move 1 to the front of the list
     char_list.insert(0, char_list.pop(next(j for j in range(len(char_list)) if char_list[j] == 1)))
-    headers = [j for j in char_list]  # Just a copy
+    headers = list(char_list)  # Just a copy
     if modulus == 1:
         rows = [[1]]
     else:

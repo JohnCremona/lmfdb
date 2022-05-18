@@ -121,7 +121,7 @@ def parity_text(val):
     return 'odd' if val == -1 else 'even'
 
 
-class WebNewform(object):
+class WebNewform():
     def __init__(self, data, space=None, all_m = False, all_n = False, embedding_label = None):
         #TODO validate data
         # Need to set level, weight, character, num_characters, degree, has_exact_qexp, has_complex_qexp, hecke_ring_index, is_twist_minimal
@@ -206,9 +206,9 @@ class WebNewform(object):
 
         # lookup twists (of newform orbits or embedded newforms as appropriate)
         if self.embedding_label is None:
-            self.twists = [r for r in db.mf_twists_nf.search({'source_label':self.label})]
+            self.twists = list(db.mf_twists_nf.search({'source_label':self.label}))
         else:
-            self.embedded_twists = [r for r in db.mf_twists_cc.search({'source_label':self.label + '.' + self.embedding_label})]
+            self.embedded_twists = list(db.mf_twists_cc.search({'source_label':self.label + '.' + self.embedding_label}))
             if self.embedded_twists:
                 self.embedded_minimal_twist = self.embedded_twists[0]["twist_class_label"]
 
@@ -395,13 +395,11 @@ class WebNewform(object):
     def primes_cc_bound(self):
         return prime_pi(self.an_cc_bound)
 
-
     @lazy_attribute
     def one_column_display(self):
         if self.embedding_m:
             an = self.cc_data[self.embedding_m]['an_normalized'].values()
-            return all([x == 0 or y == 0 for x, y in an])
-
+            return all(x == 0 or y == 0 for x, y in an)
 
     def setup_cc_data(self, info):
         """
@@ -438,7 +436,7 @@ class WebNewform(object):
         else:
             self.embedding_m = int(info['CC_m'][0])
             cc_proj.extend(['dual_conrey_index', 'dual_embedding_index'])
-            query = {'label' : self.label + '.' + self.embedding_label}
+            query = {'label': self.label + '.' + self.embedding_label}
 
         if format is None and 'CC_n' not in info:
             # for download
@@ -733,14 +731,16 @@ class WebNewform(object):
     def _order_basis_forward(self):
         basis = []
         for i, (num, den) in enumerate(zip(self.hecke_ring_numerators, self.hecke_ring_denominators)):
+            if i == 0:
+                continue
             basis.append(
                 (rf'\(\beta_{{{i}}}\)',
-                 raw_typeset_poly(num, denominator=den, var=self._nu_var, superscript=True))
+                 raw_typeset_poly(num, denominator=den, var=self._nu_var, superscript=True, final_rawvar='v'))
             )
         return self._make_table(basis)
 
     def _order_basis_inverse(self):
-        basis = [(r'\(1\)', r'\(\beta_0\)')]
+        basis = []
         for i, (num, den) in enumerate(zip(self.hecke_ring_inverse_numerators[1:], self.hecke_ring_inverse_denominators[1:])):
             if i == 0:
                 nupow = r'\(%s\)' % self._nu_latex
@@ -748,7 +748,7 @@ class WebNewform(object):
                 nupow = r'\(%s^{%s}\)' % (self._nu_latex, i+1)
             basis.append(
                 (nupow,
-                 raw_typeset_poly(num, denominator=den, var='beta', superscript=False))
+                 raw_typeset_poly(num, denominator=den, var='beta', superscript=False, final_rawvar='b'))
             )
         return self._make_table(basis)
 
@@ -963,8 +963,8 @@ function switch_basis(btype) {
         """
 
         hecke_polys_orbits = defaultdict(list)
-        R = PolynomialRing(ZZ, 'T');
-        for poly_item in db.mf_hecke_charpolys.search({'hecke_orbit_code' : self.hecke_orbit_code}):
+        R = PolynomialRing(ZZ, 'T')
+        for poly_item in db.mf_hecke_charpolys.search({'hecke_orbit_code': self.hecke_orbit_code}):
             hecke_polys_orbits[poly_item['p']] += [(R(f), e) for f, e in poly_item['charpoly_factorization']]
         if not hecke_polys_orbits:
             return None
@@ -1040,7 +1040,7 @@ function switch_basis(btype) {
                   th_wrap('cmf.twist_multiplicity', 'Mult'),
                   th_wrap('cmf.self_twist_field', 'Type'),
                   '</tr>', '</thead>', '<tbody>']
-        for r in sorted(self.twists, key = lambda x : [x['target_level'],x['target_char_orbit'],x['target_hecke_orbit'],x['conductor'],x['twisting_char_orbit']]):
+        for r in sorted(self.twists, key = lambda x: [x['target_level'],x['target_char_orbit'],x['target_hecke_orbit'],x['conductor'],x['twisting_char_orbit']]):
             minimality = '&check;' if r['target_label'] == self.minimal_twist else 'yes' if r['target_is_minimal'] else ''
             char_link = display_knowl('character.dirichlet.orbit_data', title=r['twisting_char_label'], kwargs={'label':r['twisting_char_label']})
             target_link = '<a href="%s">%s</a>'%('/ModularForm/GL2/Q/holomorphic/' + r['target_label'].replace('.','/'),r['target_label'])
@@ -1080,7 +1080,7 @@ function switch_basis(btype) {
                   th_wrap('cmf.dimension', 'Dim'),
                   '</tr>', '</thead>', '<tbody>']
 
-        for r in sorted(self.embedded_twists, key = lambda x : [x['conductor'],x['twisting_conrey_index'],revcode(x['target_hecke_orbit_code']),x['target_conrey_index'],x['target_embedding_index']]):
+        for r in sorted(self.embedded_twists, key = lambda x: [x['conductor'],x['twisting_conrey_index'],revcode(x['target_hecke_orbit_code']),x['target_conrey_index'],x['target_embedding_index']]):
             minimality = '&check;' if r['target_label'] == self.embedded_minimal_twist else 'yes' if r['target_is_minimal'] else ''
             char_link = display_knowl('character.dirichlet.data', title=r['twisting_char_label'], kwargs={'label':r['twisting_char_label']})
             target_link = '<a href="%s">%s</a>'%('/ModularForm/GL2/Q/holomorphic/' + r['target_label'].replace('.','/'),r['target_label'])
@@ -1101,7 +1101,7 @@ function switch_basis(btype) {
                   th_wrap('cmf.self_twist_field', 'Type'),
                   '</tr>', '</thead>', '<tbody>']
 
-        for r in sorted(self.embedded_twists, key = lambda x : [revcode(x['target_hecke_orbit_code']),x['target_conrey_index'],x['target_embedding_index'],x['conductor'],x['twisting_conrey_index']]):
+        for r in sorted(self.embedded_twists, key = lambda x: [revcode(x['target_hecke_orbit_code']),x['target_conrey_index'],x['target_embedding_index'],x['conductor'],x['twisting_conrey_index']]):
             minimality = '&check;' if r['target_label'] == self.embedded_minimal_twist else 'yes' if r['target_is_minimal'] else ''
             char_link = display_knowl('character.dirichlet.orbit_data', title=r['twisting_char_label'], kwargs={'label':r['twisting_char_label']})
             target_link = '<a href="%s">%s</a>'%('/ModularForm/GL2/Q/holomorphic/' + r['target_label'].replace('.','/'),r['target_label'])
@@ -1157,9 +1157,10 @@ function switch_basis(btype) {
                         out[e] = c
                     return out
                 coeffs = [to_list(data) for data in self.qexp[:prec]]
-                return raw_typeset_qexp(coeffs, superscript=True, var=self._zeta_print)
+                return raw_typeset_qexp(coeffs, superscript=True, var=self._zeta_print, final_rawvar='z')
             elif self.single_generator:
-                return raw_typeset_qexp(self.qexp[:prec], superscript=True, var=str(self._PrintRing.gen(0)))
+                var = str(self._PrintRing.gen(0))
+                return raw_typeset_qexp(self.qexp[:prec], superscript=True, var=var, final_rawvar=var[0])
             else:
                 # in this case str(self._PrintRing.gen(0)) = beta1
                 # and thus the extra case

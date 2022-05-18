@@ -162,5 +162,3 @@ class HilbertNumberField(WebNumberField):
         #     if I['label']==lab:
         #         return I['ideal']
         # return None
-
-

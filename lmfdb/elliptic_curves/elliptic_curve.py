@@ -384,10 +384,9 @@ ec_columns = SearchColumns([
              shortcuts={'jump':elliptic_curve_jump,
                         'download':EC_download()},
              bread=lambda:get_bread('Search results'))
-
 def elliptic_curve_search(info, query):
-    parse_rational_to_list(info,query,'jinv','j-invariant')
-    parse_ints(info,query,'conductor')
+    parse_rational_to_list(info, query, 'jinv', 'j-invariant')
+    parse_ints(info, query, 'conductor')
     if info.get('conductor_type'):
         if info['conductor_type'] == 'prime':
             query['num_bad_primes'] = 1
@@ -437,7 +436,7 @@ def elliptic_curve_search(info, query):
         if info['cm'] == 'noCM':
             query['cm'] = 0
         elif info['cm'] == 'CM':
-            query['cm'] = {'$ne' : 0}
+            query['cm'] = {'$ne': 0}
         else:
             parse_ints(info,query,field='cm',qfield='cm')
     parse_element_of(info,query,'isogeny_degrees',split_interval=200,contained_in=get_stats().isogeny_degrees)
@@ -456,15 +455,15 @@ def elliptic_curve_search(info, query):
             flash_error(err, "13.91.3.2", "13S4")
             raise ValueError(err)
         if elladic_labels:
-            query['elladic_images'] = { '$contains': elladic_labels }
+            query['elladic_images'] = {'$contains': elladic_labels}
         if modell_labels:
-            query['modell_images'] = { '$contains': modell_labels }
-        if not 'cm' in query:
+            query['modell_images'] = {'$contains': modell_labels}
+        if 'cm' not in query:
             query['cm'] = 0
             info['cm'] = "noCM"
         if query['cm']:
             # try to help the user out if they specify the normalizer of a Cartan in the CM case (these are either maximal or impossible
-            if any([a.endswith("Nn") for a in modell_labels]) or any([a.endswith("Ns") for a in modell_labels]):
+            if any(a.endswith("Nn") for a in modell_labels) or any(a.endswith("Ns") for a in modell_labels):
                 err = "To search for maximal images, exclude non-maximal primes"
                 flash_error(err)
                 raise ValueError(err)
@@ -477,7 +476,7 @@ def elliptic_curve_search(info, query):
                     flash_error(err)
                     raise ValueError(err)
                 else:
-                    modell_labels = [a for a in modell_labels if not a in max_labels]
+                    modell_labels = [a for a in modell_labels if a not in max_labels]
                     max_primes = [modell_image_label_regex.match(a)[1] for a in max_labels]
                     if info.get('nonmax_primes'):
                         max_primes += [l.strip() for l in info['nonmax_primes'].split(',') if not l.strip() in max_primes]
@@ -665,7 +664,7 @@ def EC_data(label):
         label_cols[1] = label_cols[7] = "lmfdb_iso"
         sorts = [[], [], [], [], ["degree", "field"], ["prime"], ["prime"], ["p"]]
         return datapage(labels, ["ec_curvedata", "ec_classdata", "ec_mwbsd", "ec_iwasawa", "ec_torsion_growth", "ec_localdata", "ec_galrep", "ec_padic"], title=f"Elliptic curve data - {label}", bread=bread, label_cols=label_cols, sorts=sorts)
-    return abort(404)
+    return abort(404, f"Invalid label {label}")
 
 @ec_page.route("/padic_data/<label>/<int:p>")
 def padic_data(label, p):
@@ -936,8 +935,8 @@ class ECSearchArray(SearchArray):
             knowl="ec.q.j_invariant",
             example="1728",
             example_span="1728 or -4096/11")
-        torsion_opts = ([("", ""),("[]", "trivial")] +
-                        [("%s"%n, "order %s"%n) for  n in range(4,16,4)] +
+        torsion_opts = ([("", ""), ("[]", "trivial")] +
+                        [("%s"%n, "order %s"%n) for n in range(4,16,4)] +
                         [("[%s]"%n, "C%s"%n) for n in range(2, 13) if n != 11] +
                         [("[2,%s]"%n, "C2&times;C%s"%n) for n in range(2, 10, 2)])
         torsion = SelectBox(
@@ -1009,7 +1008,7 @@ class ECSearchArray(SearchArray):
             select_box=nonmax_quant)
         cm_opts = ([('', ''), ('noCM', 'no potential CM'), ('CM', 'potential CM')] +
                    [('-4,-16', 'CM field Q(sqrt(-1))'), ('-3,-12,-27', 'CM field Q(sqrt(-3))'), ('-7,-28', 'CM field Q(sqrt(-7))')] +
-                   [('-%d'%d, 'CM discriminant -%d'%d) for  d in [3,4,7,8,11,12,16,19,27,38,43,67,163]])
+                   [('-%d'%d, 'CM discriminant -%d'%d) for d in [3,4,7,8,11,12,16,19,27,28,43,67,163]])
         cm = SelectBox(
             name="cm",
             label="Complex multiplication",

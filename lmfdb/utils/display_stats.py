@@ -7,7 +7,7 @@ from .utilities import format_percentage
 from .web_display import display_knowl
 from lmfdb.backend.utils import KeyedDefaultDict, range_formatter
 
-class formatters(object):
+class formatters():
     @classmethod
     def boolean(cls, value):
         return 'True' if value else 'False'
@@ -34,7 +34,7 @@ def _format_percentage(cnt, total, show_zero=False):
     else:
         return format_percentage(cnt, total) + '%'
 
-class proportioners(object):
+class proportioners():
     ##################################################################
     #                     Proportion strategies                      #
     ##################################################################
@@ -208,7 +208,7 @@ class proportioners(object):
                 D['proportion'] = _format_percentage(D['count'], overall, show_zero=True)
         return inner
 
-class totaler(object):
+class totaler():
     ##################################################################
     #                     Totaler strategies                         #
     ##################################################################
@@ -301,9 +301,12 @@ class totaler(object):
                 if not corner_count and i == num_cols:
                     break
                 total = sum(elt['count'] for elt in col)
-                query = self.common_link([elt['query'] for elt in col if elt['count'] > 0]) if include_links else '?'
-                if query[-1] == '?': # no common search queries
+                if total == 0:
                     query = None
+                else:
+                    query = self.common_link([elt['query'] for elt in col if elt['count'] > 0]) if include_links else '?'
+                    if query[-1] == '?': # no common search queries
+                        query = None
                 if recursive_prop:
                     overall = sum(D['count'] for D in total_grid_cols[i])
                 proportion = _format_percentage(total, overall) if (col_proportions and i != num_cols or corner_prop and i == num_cols) else ''
