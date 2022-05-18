@@ -34,7 +34,7 @@ fld=None # else after re-reading this file fld gets left set to 6.6.905177.1
 
 from lmfdb.hilbert_modular_forms.hilbert_field import HilbertNumberField, str2ideal
 from lmfdb.hilbert_modular_forms.hilbert_modular_form import get_hmf
-from scripts.ecnf.import_utils import make_curves_line
+#from scripts.ecnf.import_utils import make_curves_line
 from lmfdb.ecnf.WebEllipticCurve import parse_ainvs
 
 def make_conductor(ecnfdata, hfield):
@@ -312,6 +312,66 @@ def output_magma_field(field_label, K, Plist, outfilename=None, verbose=False):
         output("\n")
         outfile.close()
 
+def output_sage_field(field_label, K, Plist, outfilename=None, verbose=False):
+    r"""
+    Writes Sage code to a file to define a number field and list of primes.
+
+    INPUT:
+
+    - ``field_label`` (str) -- a number field label
+
+    - ``K`` -- a number field.
+
+    - ``Plist`` -- a list of prime ideals of `K`.
+
+    - ``outfilename`` (string, default ``None``) -- name of file for output.
+
+    - ``verbose`` (boolean, default ``False``) -- verbosity flag.  If
+      True, all output written to stdout.
+
+    NOTE:
+
+    Does not assumes the primes are principal.
+
+    OUTPUT:
+
+    (To file and/or screen, nothing is returned): Magma commands to
+    define the field `K` and the list `Plist` of primes.
+    """
+    if outfilename:
+        outfile = open(outfilename, mode="w")
+    name = K.gen()
+    pol = str(K.defining_polynomial()).replace("^", "**")
+
+    def output(L):
+        if outfilename:
+            outfile.write(L)
+        if verbose:
+            sys.stdout.write(L)
+    output('print("Field %s")\n' % field_label)
+    output('Qx = PolynomialRing(QQ, "x")\n')
+    output('x = Qx.gen()\n')
+    output('K = NumberField({}, "{}")\n'.format(pol, name))
+    output('{} = Qx.gen()\n'.format(name))
+    output('Plist = [')
+    for i,P in enumerate(Plist):
+        Pgens = P.gens_reduced()
+        if len(Pgens) == 1:
+            Psage = "K.ideal({})".format(Pgens[0])
+        else:
+            Psage = "K.ideal({},{})".format(Pgens[0],Pgens[1])
+        Psage = Psage.replace("^", "**")
+        if i:
+            output(", ")
+        output("{}".format(Psage))
+    # output definition of search function:
+    output(']\n')
+    output('Nlist = dict()\n')
+    output('aPlist = dict()\n')
+    output('BBlist = dict()\n')
+    output('\n')
+    if outfilename:
+        outfile.close()
 
 def output_magma_curve_search(HMF, form, outfilename=None, verbose=False, effort=1000):
     r""" Outputs Magma script to search for an curve to match the newform
@@ -333,7 +393,7 @@ def output_magma_curve_search(HMF, form, outfilename=None, verbose=False, effort
     search for curves given their conductors and Traces of Frobenius,
     as determined by the level and (rational) Hecke eigenvalues of a
     Hilbert Modular Newform.  The output will be appended to the file
-    whoswe name is provided, so that the field definition can be
+    whose name is provided, so that the field definition can be
     output there first using the output_magma_field() function.
     """
     def output(L):
@@ -364,15 +424,64 @@ def output_magma_curve_search(HMF, form, outfilename=None, verbose=False, effort
     if outfilename:
         outfile.close()
 
+def output_sage_curve_search(HMF, form, outfilename=None, verbose=False):
+    r""" Outputs Sage code to help search for an curve to match the newform
+    with given label.
 
-def find_curve_labels(field_label='2.2.5.1', min_norm=0, max_norm=None, outfilename=None, verbose=False, effort=1000):
+    INPUT:
+
+    - ``HMF`` -- a HilbertModularField
+
+    - ``form``  -- a rational Hilbert newform from the database
+
+    - ``outfilename`` (string, default ``None``) -- name of output file
+
+    - ``verbose`` (boolean, default ``False``) -- verbosity flag.
+
+    OUTPUT:
+
+    (To file and/or screen, nothing is returned): Sage commands to
+    define the conductor and the a_P for the primes in order.
+    """
+    def output(L):
+        if outfilename:
+            outfile.write(L)
+        if verbose:
+            sys.stdout.write(L)
+    if outfilename:
+        outfile = open(outfilename, mode="a")
+
+    N = HMF.ideal(form['level_label'])
+    conductor_ideal = form['level_ideal'].replace(" ","").replace("^", "**")
+    neigs = len(form['hecke_eigenvalues'])
+    Plist = [P['ideal'] for P in HMF.primes_iter(neigs)]
+    #goodP = [(i, P) for i, P in enumerate(Plist) if not P.divides(N)]
+    label = form['short_label']
+    if verbose:
+        print("Missing curve %s" % label)
+    #aplist = [int(form['hecke_eigenvalues'][i]) for i, P in goodP]
+    aplist = [int(a) for a in form['hecke_eigenvalues']]
+    output('Nlist["{}"] = K.ideal({})\n'.format(label, conductor_ideal))
+    output('aPlist["{}"] = ['.format(label))
+    for i,a in enumerate(aplist):
+        if i:
+            output(", ")
+        output("{}".format(a))
+    output(']\n')
+    output('BBlist["{}"] = dict([(P,aP) for P,aP in zip(Plist, aPlist["{}"])])\n\n'.format(label, label))
+
+    if outfilename:
+        outfile.close()
+
+
+def find_curve_labels(field_label='2.2.5.1', min_norm=0, max_norm=None, outfilename=None, verbose=False, effort=1000, language='magma'):
     r""" Go through all Hilbert Modular Forms with the given field label,
     assumed totally real, for level norms in the given range, test
     whether an elliptic curve exists with the same label.
     """
     query = {}
     query['field_label'] = field_label
-    if fields.search({'label': field_label}).count() == 0:
+    if fields.count({'label': field_label}) == 0:
         if verbose:
             print("No HMF data for field %s" % field_label)
         return None
@@ -458,20 +567,27 @@ def find_curve_labels(field_label='2.2.5.1', min_norm=0, max_norm=None, outfilen
     # Magma file containing code to search for such a curve.
 
     # First output Magma code to define the field and primes:
-    output_magma_field(field_label, K.K(), primes, outfilename)
+    if (language=='magma'):
+        output_magma_field(field_label, K.K(), primes, outfilename)
+    else:
+        output_sage_field(field_label, K.K(), primes, outfilename)
     if verbose:
         print("...output definition of field and primes finished")
 
     for nf_label in missing_curves:
         if verbose:
             print("Curve %s is missing..." % nf_label)
-        form = forms.lucky({'field_label': field_label, 'short_label': nf_label})
+        #form = forms.lucky({'field_label': field_label, 'short_label': nf_label})
+        form = get_hmf("-".join([field_label,nf_label]))
         if not form:
             print("... form %s not found!" % nf_label)
         else:
             if verbose:
-                print("... found form, outputting Magma search code")
-            output_magma_curve_search(K, form, outfilename, verbose=verbose, effort=effort)
+                print("... found form {}, outputting {} search code".format(nf_label, language))
+            if (language=='magma'):
+                output_magma_curve_search(K, form, outfilename, verbose=verbose, effort=effort)
+            else:
+                output_sage_curve_search(K, form, outfilename, verbose=verbose)
 
 # Use the following by preference, assuming that Magma is available.
 # If outfilename=None (the default) then no searching is done and no
@@ -773,7 +889,7 @@ def magma_output_iter(infilename):
         try:
             L = next(infile)
         except StopIteration:
-            raise StopIteration
+            break
 
         if 'Field' in L:
             field_label = L.split()[1]

@@ -128,7 +128,8 @@ class HilbertNumberField(WebNumberField):
             ilabel += 1
             count += 1
             if count==number:
-                raise StopIteration
+                break
+
 
     def primes_iter(self, number=None):
         return self._iter_ideals(True,number)
